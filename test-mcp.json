@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "deepwiki": {
+      "url": "https://mcp.deepwiki.com/mcp"
+    },
+    "ref": {
+      "url": "https://api.ref.tools/mcp",
+      "headers": {
+        "x-ref-api-key": "ref-6469e389ed7769520043"
+      }
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp"
+    }
+  }
+}

@@ -18,6 +18,7 @@ Options:
   -v, --version                       Show version information
   --debug                             Enable debug logging
   --configpath <path>                 Specify custom path for mcp.json
+  --headers <headers>                 Specify custom headers for direct commands
 
 Commands:
   init                                Initialize configuration from mcp.json
@@ -48,6 +49,10 @@ Examples:
   tmcp direct https://mcp.context7.com/mcp list
   tmcp direct https://mcp.context7.com/mcp call resolve-library-id '{"libraryName": "react"}'
 
+  # With custom headers for authentication
+  tmcp direct https://api.ref.tools/mcp --headers '{"x-ref-api-key": "your-key"}' list
+  tmcp direct https://api.ref.tools/mcp --headers '{"x-ref-api-key": "your-key"}' call search_documentation '{"query": "React"}'
+
   tmcp --debug call tool-alias <json-args>
 
 For more information, visit: https://github.com/zueai/terminal-mcp`);
@@ -60,6 +65,7 @@ const { values, positionals } = parseArgs({
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
     configpath: { type: "string", default: "" },
+    headers: { type: "string", default: "" },
   },
   allowPositionals: true,
 });
@@ -68,6 +74,7 @@ const debug = values.debug as boolean;
 const help = values.help as boolean;
 const version = values.version as boolean;
 const configPath = values.configpath as string;
+const headersJson = values.headers as string;
 
 const debugLog = createDebugLogger(debug);
 
@@ -166,6 +173,7 @@ if (version) {
         if (args.length < 2) {
           console.error("❌ Invalid arguments for direct command");
           console.error("Usage: tmcp direct <url> <subcommand>");
+          console.error("       tmcp direct <url> --headers <json> <subcommand>");
           console.error("Subcommands:");
           console.error("  list                           List tools from the server");
           console.error("  call <tool-name> <json-params> Call a specific tool");
@@ -174,9 +182,22 @@ if (version) {
 
         const [url, subcommand, ...subArgs] = args;
 
+        // Parse headers if provided
+        let headers: Record<string, string> | undefined;
+        if (headersJson) {
+          try {
+            headers = JSON.parse(headersJson);
+            debugLog("Parsed headers:", headers);
+          } catch (error) {
+            console.error("❌ Invalid JSON in --headers option");
+            console.error("Headers must be valid JSON, e.g.: '{\"x-api-key\": \"your-key\"}'");
+            process.exit(1);
+          }
+        }
+
         switch (subcommand) {
           case "list": {
-            await listToolsDirect(url, debugLog);
+            await listToolsDirect(url, debugLog, headers);
             break;
           }
 
@@ -187,7 +208,7 @@ if (version) {
               process.exit(1);
             }
             const [toolName, params] = subArgs;
-            await callToolDirect(url, toolName, params, debugLog);
+            await callToolDirect(url, toolName, params, debugLog, headers);
             break;
           }
 

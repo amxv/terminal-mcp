@@ -96,14 +96,17 @@ export async function createClient(config: McpServerConfig, debugLog: (message: 
       throw new Error("Server URL not found in HTTP server configuration");
     }
 
-    transport = new StreamableHTTPClientTransport(new URL(serverUrl));
-
-    // Add custom headers if specified
+    // Create transport with headers if specified
+    const transportOptions: any = {};
     if (config.headers) {
-      // Note: The SDK might need to be extended to support custom headers
-      // For now, we'll store them for potential future use
-      debugLog("Custom headers specified:", config.headers);
+      transportOptions.requestInit = {
+        headers: config.headers
+      };
+      debugLog("Adding custom headers:", config.headers);
     }
+
+    // Pass headers as the second parameter to StreamableHTTPClientTransport
+    transport = new StreamableHTTPClientTransport(new URL(serverUrl), transportOptions);
   }
 
   try {
@@ -133,12 +136,20 @@ export async function createClient(config: McpServerConfig, debugLog: (message: 
 /**
  * Create and connect to an MCP client with endpoint URL (legacy method)
  */
-export async function createClientFromUrl(endpoint: string, debugLog: (message: string, ...args: any[]) => void): Promise<Client> {
+export async function createClientFromUrl(endpoint: string, debugLog: (message: string, ...args: any[]) => void, headers?: Record<string, string>): Promise<Client> {
   debugLog("Creating MCP client for endpoint:", endpoint);
 
   try {
-    // Create transport
-    const transport = new StreamableHTTPClientTransport(new URL(endpoint));
+    // Create transport with optional headers
+    const transportOptions: any = {};
+    if (headers) {
+      transportOptions.requestInit = {
+        headers: headers
+      };
+      debugLog("Adding custom headers:", headers);
+    }
+
+    const transport = new StreamableHTTPClientTransport(new URL(endpoint), transportOptions);
 
     // Create client
     const client = new Client({

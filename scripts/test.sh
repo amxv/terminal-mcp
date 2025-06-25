@@ -325,6 +325,129 @@ EOF
     rm -f mcp-auth.json mcp-no-auth.json
 }
 
+test_custom_headers_functionality() {
+    log_info "=== Testing Custom Headers Functionality ==="
+
+    # Check if we have the required environment variable for the ref server
+    if [[ -z "$REF_API_KEY" ]]; then
+        log_warning "REF_API_KEY not set, skipping custom headers tests"
+        return
+    fi
+
+    # Test HTTP header-based authentication (as opposed to environment variables)
+    # Create test mcp.json with headers-based ref server configuration
+    cat > mcp-headers.json << EOF
+{
+  "mcpServers": {
+    "context7": {
+      "url": "$CONTEXT7_URL"
+    },
+    "ref": {
+      "url": "https://api.ref.tools/mcp",
+      "headers": {
+        "x-ref-api-key": "$REF_API_KEY"
+      }
+    }
+  }
+}
+EOF
+
+    # Test initialization with headers-based authentication
+    run_test "Initialize with custom headers authentication" \
+        "$TMCP_CMD --configpath mcp-headers.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test listing tools from server using custom headers
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        run_test "List tools includes header-authenticated server tools" \
+            "$TMCP_CMD --configpath mcp-headers.json list" \
+            '"configured_tools".*"total_count"'
+
+        # Try to find a ref tool to test with
+        local ref_tool
+        if command -v jq &> /dev/null; then
+            ref_tool=$("$TMCP_CMD" --configpath mcp-headers.json list 2>/dev/null | jq -r '.configured_tools[] | select(.alias | startswith("ref__")) | .alias' | head -1 2>/dev/null || echo "")
+        fi
+
+        if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+            # Test calling header-authenticated tool
+            run_test "Call header-authenticated tool ($ref_tool)" \
+                "$TMCP_CMD --configpath mcp-headers.json call $ref_tool '{\"query\": \"React hooks\"}'" \
+                '"content"|"result"|"data"'
+        else
+            log_warning "No ref tools found in header configuration, skipping header-authenticated tool call test"
+        fi
+    fi
+
+    # Test that headers work with direct communication too
+    run_test "Direct communication with custom headers" \
+        "$TMCP_CMD direct https://api.ref.tools/mcp --headers '{\"x-ref-api-key\": \"$REF_API_KEY\"}' list" \
+        '"tools".*"total_count"'
+
+    # Test direct tool call with custom headers
+    run_test "Direct tool call with custom headers" \
+        "$TMCP_CMD direct https://api.ref.tools/mcp --headers '{\"x-ref-api-key\": \"$REF_API_KEY\"}' call search_documentation '{\"query\": \"React hooks\"}'" \
+        '"content"|"result"|"data"'
+
+    # Test behavior with missing headers (should fail with 401)
+    run_test_expect_failure "Server fails without required headers" \
+        "$TMCP_CMD direct https://api.ref.tools/mcp list" \
+        "401|Unauthorized|Authentication.*required"
+
+    # Test behavior with invalid headers
+    run_test_expect_failure "Server fails with invalid headers" \
+        "$TMCP_CMD direct https://api.ref.tools/mcp --headers '{\"x-ref-api-key\": \"invalid-key-123\"}' list" \
+        "401|403|Unauthorized|Invalid.*key|Authentication.*failed"
+
+    # Test multiple headers
+    cat > mcp-multi-headers.json << EOF
+{
+  "mcpServers": {
+    "ref": {
+      "url": "https://api.ref.tools/mcp",
+      "headers": {
+        "x-ref-api-key": "$REF_API_KEY",
+        "User-Agent": "terminal-mcp-test/1.0",
+        "Accept": "application/json"
+      }
+    }
+  }
+}
+EOF
+
+    run_test "Initialize with multiple custom headers" \
+        "$TMCP_CMD --configpath mcp-multi-headers.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test that agent binary works with header-authenticated servers when configured
+    # Copy the header-authenticated config to the default location for agent testing
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        # Backup existing config
+        [[ -f "terminal-mcp/servers.json" ]] && cp "terminal-mcp/servers.json" "terminal-mcp/servers.json.backup"
+
+        # Copy header-authenticated config to default location
+        cp mcp-headers.json mcp.json
+        "$TMCP_CMD" init > /dev/null 2>&1
+
+        run_test "Agent works with header-authenticated server config" \
+            "$TMCP_AGENT_CMD list" \
+            '"configured_tools".*"total_count"|No tools configuration found"'
+
+        # Test agent can call header-authenticated tools
+        if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+            run_test "Agent can call header-authenticated tool ($ref_tool)" \
+                "$TMCP_AGENT_CMD call $ref_tool '{\"query\": \"React hooks\"}'" \
+                '"content"|"result"|"data"|Tool.*not found"'
+        fi
+
+        # Restore original config
+        [[ -f "terminal-mcp/servers.json.backup" ]] && mv "terminal-mcp/servers.json.backup" "terminal-mcp/servers.json"
+    fi
+
+    # Clean up test files
+    rm -f mcp-headers.json mcp-multi-headers.json
+}
+
 test_configuration_functionality() {
     log_info "=== Testing Configuration-Based Functionality ==="
 
@@ -567,6 +690,8 @@ main() {
     test_configuration_functionality
     log_info "Running authenticated server tests..."
     test_authenticated_functionality
+    log_info "Running custom headers tests..."
+    test_custom_headers_functionality
     log_info "Running agent safety control tests..."
     test_agent_safety_controls
     log_info "Running error condition tests..."

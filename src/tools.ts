@@ -39,10 +39,10 @@ export async function listConfiguredTools(debugLog: (message: string, ...args: a
 /**
  * List tools directly from an MCP server URL
  */
-export async function listToolsDirect(endpoint: string, debugLog: (message: string, ...args: any[]) => void) {
+export async function listToolsDirect(endpoint: string, debugLog: (message: string, ...args: any[]) => void, headers?: Record<string, string>) {
   debugLog("Listing tools directly from endpoint:", endpoint);
 
-  const client = await createClientFromUrl(endpoint, debugLog);
+  const client = await createClientFromUrl(endpoint, debugLog, headers);
 
   try {
     const toolsResponse = await client.listTools();
@@ -100,7 +100,7 @@ export async function listToolsDirect(endpoint: string, debugLog: (message: stri
 /**
  * Call a tool directly on an MCP server URL
  */
-export async function callToolDirect(endpoint: string, toolName: string, params: string, debugLog: (message: string, ...args: any[]) => void) {
+export async function callToolDirect(endpoint: string, toolName: string, params: string, debugLog: (message: string, ...args: any[]) => void, headers?: Record<string, string>) {
   debugLog("Calling tool directly:", toolName);
   debugLog("Endpoint:", endpoint);
   debugLog("Raw params:", params);
@@ -147,7 +147,7 @@ export async function callToolDirect(endpoint: string, toolName: string, params:
     throw error;
   }
 
-  const client = await createClientFromUrl(endpoint, debugLog);
+  const client = await createClientFromUrl(endpoint, debugLog, headers);
 
   try {
     debugLog("Making tool call...");
