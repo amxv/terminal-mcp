@@ -1,0 +1,30 @@
+{
+  "name": "mcp-cli",
+  "version": "0.1.0",
+  "description": "CLI to interact with MCP Streamable-HTTP server",
+  "license": "MIT",
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "build:linux-x64": "bun build ./src/cli.ts --compile --minify --target=bun-linux-x64 --outfile dist/mcp-cli-linux-x64",
+    "build:linux-arm64": "bun build ./src/cli.ts --compile --minify --target=bun-linux-arm64 --outfile dist/mcp-cli-linux-arm64",
+    "build:macos-arm64": "bun build ./src/cli.ts --compile --minify --target=bun-darwin-arm64 --outfile dist/mcp-cli-macos-arm64",
+    "build:macos-x64": "bun build ./src/cli.ts --compile --minify --target=bun-darwin-x64 --outfile dist/mcp-cli-macos-x64",
+    "build:all": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:macos-arm64 && bun run build:macos-x64",
+    "build": "./scripts/build.sh",
+    "clean": "rm -rf dist",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major",
+    "prerelease": "./scripts/prerelease.sh",
+    "prerelease:alpha": "./scripts/prerelease.sh alpha",
+    "prerelease:beta": "./scripts/prerelease.sh beta",
+    "prerelease:rc": "./scripts/prerelease.sh rc",
+    "status": "./scripts/status.sh",
+    "changelog": "./scripts/changelog.sh"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "^1.2.17"
+  }
+}
