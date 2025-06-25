@@ -5,19 +5,21 @@ set -e
 rm -rf dist
 mkdir -p dist
 
-echo "Building executables..."
+# Get version from package.json
+VERSION=$(node -p "require('./package.json').version")
+echo "Building executables with version: $VERSION"
 
-# Build main CLI for different platforms
-bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-arm64 --outfile dist/terminal-mcp-macos-arm64
-bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-x64 --outfile dist/terminal-mcp-macos-x64
-bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-linux-x64 --outfile dist/terminal-mcp-linux-x64
-bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-linux-arm64 --outfile dist/terminal-mcp-linux-arm64
+# Build main CLI for different platforms with version injection
+bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-arm64 --outfile dist/terminal-mcp-macos-arm64 --define BUILD_VERSION=\"$VERSION\"
+bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-x64 --outfile dist/terminal-mcp-macos-x64 --define BUILD_VERSION=\"$VERSION\"
+bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-linux-x64 --outfile dist/terminal-mcp-linux-x64 --define BUILD_VERSION=\"$VERSION\"
+bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-linux-arm64 --outfile dist/terminal-mcp-linux-arm64 --define BUILD_VERSION=\"$VERSION\"
 
-# Build agent CLI for Linux and macOS (macOS for local testing)
-bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-linux-x64 --outfile dist/terminal-mcp-agent-linux-x64
-bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-linux-arm64 --outfile dist/terminal-mcp-agent-linux-arm64
-bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-arm64 --outfile dist/terminal-mcp-agent-macos-arm64
-bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-x64 --outfile dist/terminal-mcp-agent-macos-x64
+# Build agent CLI for Linux and macOS (macOS for local testing) with version injection
+bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-linux-x64 --outfile dist/terminal-mcp-agent-linux-x64 --define BUILD_VERSION=\"$VERSION\"
+bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-linux-arm64 --outfile dist/terminal-mcp-agent-linux-arm64 --define BUILD_VERSION=\"$VERSION\"
+bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-arm64 --outfile dist/terminal-mcp-agent-macos-arm64 --define BUILD_VERSION=\"$VERSION\"
+bun build ./src/cli-agent.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-x64 --outfile dist/terminal-mcp-agent-macos-x64 --define BUILD_VERSION=\"$VERSION\"
 
 echo "Creating archives..."
 

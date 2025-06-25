@@ -2,17 +2,30 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 
+// Version will be injected at build time via --define
+declare const BUILD_VERSION: string;
+
 /**
- * Get package version from package.json
+ * Get package version - injected at build time or from package.json in dev
  */
 export function getVersion(): string {
+  // In production builds, BUILD_VERSION is defined via --define flag
+  if (typeof BUILD_VERSION !== 'undefined') {
+    return BUILD_VERSION;
+  }
+
+  // In development mode, read from package.json
   try {
     const packagePath = join(__dirname, "..", "package.json");
-    const packageJson = JSON.parse(readFileSync(packagePath, "utf-8"));
-    return packageJson.version || "unknown";
+    if (existsSync(packagePath)) {
+      const packageJson = JSON.parse(readFileSync(packagePath, "utf-8"));
+      return packageJson.version || "unknown";
+    }
   } catch (error) {
-    return "unknown";
+    // Ignore error and fallback
   }
+
+  return "unknown";
 }
 
 /**
