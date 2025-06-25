@@ -37,11 +37,17 @@ esac
 
 echo "Detected platform: $OS-$ARCH -> $PLATFORM"
 
-# Prompt for installation directory
-echo ""
-echo "Choose installation directory:"
-read -p "Install directory [$DEFAULT_INSTALL_DIR]: " INSTALL_DIR
-INSTALL_DIR=${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}
+# Prompt for installation directory (only if interactive)
+if [ -t 0 ]; then
+    echo ""
+    echo "Choose installation directory:"
+    read -p "Install directory [$DEFAULT_INSTALL_DIR]: " INSTALL_DIR
+    INSTALL_DIR=${INSTALL_DIR:-$DEFAULT_INSTALL_DIR}
+else
+    # Non-interactive mode (piped input)
+    INSTALL_DIR=$DEFAULT_INSTALL_DIR
+    echo "Installing to default directory: $INSTALL_DIR"
+fi
 
 # Expand tilde if present
 INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
