@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from "util";
-import { showVersion, getVersion, createDebugLogger, exitWithError } from "./cli-common";
+import { showVersion, getVersion, createDebugLogger, exitWithError, compareVersions, fetchLatestVersion, executeUpgrade } from "./cli-common";
 import { initConfig } from "./config";
 import { callToolByAlias, listConfiguredTools, listToolsDirect, callToolDirect } from "./tools";
 
@@ -23,6 +23,7 @@ Commands:
   init                                Initialize configuration from mcp.json
   call <tool-alias> <json-params>     Call a tool using configured alias
   list                                List all configured tools
+  upgrade                             Upgrade to the latest version
   direct <url> <subcommand>           Direct server communication
     list                              List tools from the server
     call <tool-name> <json-params>    Call a specific tool
@@ -35,6 +36,7 @@ Setup:
 Examples:
   tmcp init
   tmcp list
+  tmcp upgrade
   tmcp call context7__resolve-library-id '{"libraryName": "react"}'
   tmcp call context7__get-library-docs '{"context7CompatibleLibraryID": "/facebook/react"}'
 
@@ -116,6 +118,47 @@ if (version) {
           process.exit(1);
         }
         await listConfiguredTools(debugLog, configPath);
+        break;
+      }
+
+      case "upgrade": {
+        if (args.length > 0) {
+          exitWithError(
+            "Upgrade command does not accept arguments",
+            "Usage: tmcp upgrade"
+          );
+        }
+
+        const REPO = "zueai/terminal-mcp";
+        const currentVersion = getVersion();
+
+        console.log(`Current version: ${currentVersion}`);
+        console.log("🔍 Checking for updates...");
+
+                const latestInfo = await fetchLatestVersion(REPO);
+        if (!latestInfo) {
+          exitWithError("Failed to check for updates. Please try again later.");
+          return; // This won't execute but satisfies TypeScript
+        }
+
+        const latestVersion = latestInfo.version;
+        debugLog("Latest version:", latestVersion);
+        debugLog("Current version:", currentVersion);
+
+        const comparison = compareVersions(latestVersion, currentVersion);
+
+        if (comparison > 0) {
+          console.log(`📦 New version available: ${latestVersion}`);
+          console.log(`🔗 Release notes: ${latestInfo.url}`);
+          console.log();
+
+          await executeUpgrade(REPO, debugLog);
+        } else if (comparison === 0) {
+          console.log(`✅ You're already on the latest version (${currentVersion})!`);
+        } else {
+          console.log(`🔄 You're on a newer version (${currentVersion}) than the latest release (${latestVersion})`);
+          console.log("This might be a development or prerelease version.");
+        }
         break;
       }
 

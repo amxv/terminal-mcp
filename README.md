@@ -151,6 +151,7 @@ The agent version is a separate, security-focused binary that:
 **🚫 Blocks Developer Operations:**
 - `tmcp init` - Cannot modify tool configurations
 - `tmcp direct` - Cannot bypass pre-configured servers
+- `tmcp upgrade` - Cannot upgrade itself (security restriction)
 - `--configpath` - Cannot switch to different config files
 
 **🔒 Security Benefits:**
@@ -207,6 +208,19 @@ tmcp init
 # Use custom configuration file
 tmcp --configpath /path/to/config.json init
 ```
+
+### `upgrade` - Update to Latest Version
+
+Checks for and downloads the latest version of tmcp from GitHub releases.
+
+```bash
+# Check for updates and upgrade if available
+tmcp upgrade
+
+
+```
+
+**Note:** The upgrade command is only available in the full developer version, not in the agent version for security reasons.
 
 ### `list` - Show Available Tools
 
