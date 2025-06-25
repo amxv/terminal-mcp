@@ -10,9 +10,9 @@ This project was created to provide coding agents access to local and remote MCP
 - 🚀 **Zero Dependencies**: Standalone executable that doesn't require Node.js, Python, or any other runtime to be installed
 - 🌐 **Cross-Platform**: Works on Linux (x64 & ARM64) and macOS (Intel & Apple Silicon)
 - ⚡ **Fast Startup**: Launches in under 100ms
-- 🔧 **Configuration-Based**: Support for common `mcp.json` configuration files (such as Cursor's mcp.json).
+- 🔧 **Supports mcp.json config**: Support for common configuration files from popular MCP clients (Cursor, Claude Code, etc.)
 - 🔐 **Authentication**: Support for custom headers and environment variables
-- 🎯 **Direct Communication**: Connect to any MCP server without configuration
+- 🎯 **Direct Tool Calls**: Connect to any MCP server without configuration
 - 📦 **Agent-Safe Binary**: Zero risk of config changes or bypassing security controls because your agent literally gets a different binary that allows listing and calling pre-configured tools.
 
 ---
@@ -21,15 +21,13 @@ This project was created to provide coding agents access to local and remote MCP
 
 ### Step 1: Install the Full Developer Version
 
-Run the auto-install script to install the developer version of `tmcp` for your OS (Mac/Linux) with full control:
+Run the auto-install script to install the developer version of `tmcp` for your OS (Mac/Linux) which gives you full control:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zueai/terminal-mcp/main/install.sh | bash
 ```
 
-**Note:** This installs the complete developer version that includes `init`, `direct`, and configuration management commands.
-
-Your agent will use a different install script to install the agent-safe binary that only allows safe operations. See [AI Agent Setup](#ai-agent-setup) below.
+Your agent will use a different install script to install the agent-safe binary that only allows safe operations. See [Step 6](#step-6-install-the-agent-version-of-the-terminal-mcp-cli) below.
 
 For detailed manual installation instructions, see: [Manual Installation Guide](docs/MANUAL_INSTALLATION.md)
 
@@ -62,7 +60,7 @@ Create an MCP configuration file at `./terminal-mcp/servers.json` with your MCP 
 
 ### Step 3: Initialize and Discover Tools
 
-Run this command to parse your MCP config and create a `tools.json` file with all tools from all servers in your config:
+Run this command to parse your MCP config and discover all tools from every server in your config:
 ```bash
 tmcp init
 ```
@@ -83,7 +81,7 @@ This will create `terminal-mcp/tools.json` file with the following structure:
 
 ### Step 4: Disable Tools (Optional)
 
-Edit the generated `./terminal-mcp/tools.json` file to disable tools you don't want your agent to use by setting `enabled: false`.
+Edit the generated `./terminal-mcp/tools.json` file and set `enabled: false` for any tools you don't want your agent to use.
 
 ### Step 5: Modify your Agent's Instructions File
 
@@ -141,7 +139,7 @@ In Codex, you can add this in the `Setup Script` section when configuring your e
 
 ---
 
-### What's Different in the Agent Version?
+### What's Different in the Agent Binary?
 
 The agent version is a separate, security-focused binary that:
 
