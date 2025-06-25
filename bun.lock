@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "mcp-cli",
+      "name": "terminal-mcp",
       "devDependencies": {
         "@types/bun": "^1.2.17",
       },

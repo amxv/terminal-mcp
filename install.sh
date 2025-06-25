@@ -2,10 +2,10 @@
 set -e
 
 # Configuration
-REPO="your-username/mcp-cli"  # Update this with your GitHub repo
+REPO="your-username/terminal-mcp"  # Update this with your GitHub repo
 VERSION="latest"
 INSTALL_DIR="/usr/local/bin"
-BINARY_NAME="mcp-cli"
+BINARY_NAME="terminal-mcp"
 
 # Detect platform
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -36,9 +36,9 @@ echo "Detected platform: $OS-$ARCH -> $PLATFORM"
 
 # Download URL
 if [ "$VERSION" = "latest" ]; then
-    DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/mcp-cli-$PLATFORM.tar.gz"
+    DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/terminal-mcp-$PLATFORM.tar.gz"
 else
-    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/mcp-cli-$PLATFORM.tar.gz"
+    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$VERSION/terminal-mcp-$PLATFORM.tar.gz"
 fi
 
 # Create temporary directory
@@ -52,7 +52,7 @@ echo "Extracting..."
 tar -xzf "$BINARY_NAME.tar.gz"
 
 echo "Installing to $INSTALL_DIR..."
-sudo mv "mcp-cli-$PLATFORM" "$INSTALL_DIR/$BINARY_NAME"
+sudo mv "terminal-mcp-$PLATFORM" "$INSTALL_DIR/$BINARY_NAME"
 sudo chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
 # Cleanup

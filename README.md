@@ -14,22 +14,22 @@ A command-line tool for interacting with MCP (Model Context Protocol) Streamable
 ### Quick Install (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-username/mcp-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/your-username/terminal-mcp/main/install.sh | bash
 ```
 
 ### Manual Installation
 
-1. Download the appropriate binary for your platform from the [releases page](https://github.com/your-username/mcp-cli/releases)
-2. Extract the archive: `tar -xzf mcp-cli-*.tar.gz`
-3. Move to your PATH: `sudo mv mcp-cli-* /usr/local/bin/mcp-cli`
-4. Make executable: `sudo chmod +x /usr/local/bin/mcp-cli`
+1. Download the appropriate binary for your platform from the [releases page](https://github.com/your-username/terminal-mcp/releases)
+2. Extract the archive: `tar -xzf terminal-mcp-*.tar.gz`
+3. Move to your PATH: `sudo mv terminal-mcp-* /usr/local/bin/terminal-mcp`
+4. Make executable: `sudo chmod +x /usr/local/bin/terminal-mcp`
 
 ### Available Platforms
 
-- `mcp-cli-macos-arm64.tar.gz` - macOS Apple Silicon (M1/M2/M3)
-- `mcp-cli-macos-x64.tar.gz` - macOS Intel
-- `mcp-cli-linux-x64.tar.gz` - Linux x64
-- `mcp-cli-linux-arm64.tar.gz` - Linux ARM64
+- `terminal-mcp-macos-arm64.tar.gz` - macOS Apple Silicon (M1/M2/M3)
+- `terminal-mcp-macos-x64.tar.gz` - macOS Intel
+- `terminal-mcp-linux-x64.tar.gz` - Linux x64
+- `terminal-mcp-linux-arm64.tar.gz` - Linux ARM64
 
 ## Usage
 
@@ -37,23 +37,23 @@ curl -fsSL https://raw.githubusercontent.com/your-username/mcp-cli/main/install.
 
 ```bash
 # List available tools from the server
-mcp-cli tools
+terminal-mcp tools
 
 # Run a specific tool
-mcp-cli run <tool-name> [arguments...]
+terminal-mcp run <tool-name> [arguments...]
 
 # Use a custom endpoint
-mcp-cli tools --endpoint=https://your-server.com/mcp
+terminal-mcp tools --endpoint=https://your-server.com/mcp
 ```
 
 ### Examples
 
 ```bash
 # Connect to a local MCP server
-mcp-cli tools --endpoint=http://localhost:8123/mcp
+terminal-mcp tools --endpoint=http://localhost:8123/mcp
 
 # Run a tool with arguments
-mcp-cli run search-files "*.ts" --endpoint=http://localhost:8123/mcp
+terminal-mcp run search-files "*.ts" --endpoint=http://localhost:8123/mcp
 ```
 
 ## Development
@@ -65,8 +65,8 @@ mcp-cli run search-files "*.ts" --endpoint=http://localhost:8123/mcp
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/mcp-cli.git
-cd mcp-cli
+git clone https://github.com/your-username/terminal-mcp.git
+cd terminal-mcp
 bun install
 ```
 
@@ -99,7 +99,7 @@ bun install && bun run build && bun run start
 
 Then in another terminal:
 ```bash
-mcp-cli tools --endpoint=http://localhost:8123/mcp
+terminal-mcp tools --endpoint=http://localhost:8123/mcp
 ```
 
 ## How It Works

@@ -50,8 +50,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/mcp-cli-macos-arm64.tar.gz
-        asset_name: mcp-cli-macos-arm64.tar.gz
+        asset_path: ./dist/terminal-mcp-macos-arm64.tar.gz
+        asset_name: terminal-mcp-macos-arm64.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload macOS x64
@@ -60,8 +60,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/mcp-cli-macos-x64.tar.gz
-        asset_name: mcp-cli-macos-x64.tar.gz
+        asset_path: ./dist/terminal-mcp-macos-x64.tar.gz
+        asset_name: terminal-mcp-macos-x64.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload Linux x64
@@ -70,8 +70,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/mcp-cli-linux-x64.tar.gz
-        asset_name: mcp-cli-linux-x64.tar.gz
+        asset_path: ./dist/terminal-mcp-linux-x64.tar.gz
+        asset_name: terminal-mcp-linux-x64.tar.gz
         asset_content_type: application/gzip
 
     - name: Upload Linux ARM64
@@ -80,6 +80,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./dist/mcp-cli-linux-arm64.tar.gz
-        asset_name: mcp-cli-linux-arm64.tar.gz
+        asset_path: ./dist/terminal-mcp-linux-arm64.tar.gz
+        asset_name: terminal-mcp-linux-arm64.tar.gz
         asset_content_type: application/gzip

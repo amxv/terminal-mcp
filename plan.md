@@ -4,7 +4,7 @@ Below is a concise “recipe” to get from TypeScript source → tiny, self�
 
 1 Project layout (suggested)
 
-mcp-cli/
+terminal-mcp/
 ├─ src/
 │  └─ cli.ts         # entry point (see §2 for a starter)
 ├─ bunfig.toml       # optional Bun settings
@@ -76,7 +76,7 @@ export async function rpc(method: string, params: unknown) {
       await rpc("runTool", { name: args[0], args: args.slice(1) });
       break;
     default:
-      console.log(`mcp-cli tools | run <tool> [...]   --endpoint=<url>`);
+      console.log(`terminal-mcp tools | run <tool> [...]   --endpoint=<url>`);
   }
 })();
 

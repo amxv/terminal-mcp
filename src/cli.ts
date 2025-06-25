@@ -60,7 +60,7 @@ export async function rpc(method: string, params: unknown) {
       await rpc("runTool", { name: args[0], args: args.slice(1) });
       break;
     default:
-      console.log(`mcp-cli tools | run <tool> [...]   --endpoint=<url>`);
+      console.log(`terminal-mcp tools | run <tool> [...]   --endpoint=<url>`);
   }
 })();
 
