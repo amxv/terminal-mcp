@@ -23,7 +23,9 @@
     "status": "./scripts/status.sh",
     "changelog": "./scripts/changelog.sh"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.1"
+  },
   "devDependencies": {
     "@types/bun": "^1.2.17"
   }
