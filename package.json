@@ -1,6 +1,6 @@
 {
   "name": "terminal-mcp",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "CLI to interact with MCP Streamable-HTTP server",
   "license": "MIT",
   "scripts": {
