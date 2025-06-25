@@ -20,7 +20,7 @@ function getVersion(): string {
 function showVersion() {
   const version = getVersion();
   console.log(`terminal-mcp v${version}`);
-  console.log("CLI tool for interacting with MCP Streamable-HTTP servers");
+  console.log("CLI tool for interacting with MCP servers (HTTP and stdio)");
   console.log("License: MIT");
   console.log("Repository: https://github.com/zueai/terminal-mcp");
 }
@@ -30,7 +30,7 @@ function showHelp() {
   const version = getVersion();
   console.log(`terminal-mcp (tmcp) v${version}
 
-A minimal command-line MCP client for calling tools from remote MCP servers.
+A minimal command-line MCP client for calling tools from MCP servers (HTTP and stdio).
 
 Usage: tmcp [options] <command> [arguments]
 
@@ -49,7 +49,7 @@ Commands:
     call <tool-name> <json-params>    Call a specific tool
 
 Setup:
-  1. Create mcp.json in your project root or .cursor/mcp.json
+  1. Create mcp.json with HTTP servers (url) and/or stdio servers (command)
   2. Run 'tmcp init' to discover and configure tools
   3. Use 'tmcp call <tool-alias> <json-params>' to call tools
 

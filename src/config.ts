@@ -7,6 +7,9 @@ export interface McpServerConfig {
   serverUrl?: string;
   headers?: Record<string, string>;
   env?: Record<string, string>;
+  // Support for stdio servers
+  command?: string;
+  args?: string[];
 }
 
 export interface McpConfig {
@@ -140,6 +143,29 @@ export function getServerUrl(config: McpServerConfig): string {
 }
 
 /**
+ * Check if a server config is for stdio (local) or HTTP (remote)
+ */
+export function isStdioServer(config: McpServerConfig): boolean {
+  return !!config.command;
+}
+
+/**
+ * Validate server configuration
+ */
+export function validateServerConfig(config: McpServerConfig): void {
+  const hasUrl = !!(config.url || config.serverUrl);
+  const hasCommand = !!config.command;
+
+  if (!hasUrl && !hasCommand) {
+    throw new Error("Server configuration must have either 'url'/'serverUrl' (for HTTP) or 'command' (for stdio)");
+  }
+
+  if (hasUrl && hasCommand) {
+    throw new Error("Server configuration cannot have both URL and command - choose either HTTP or stdio");
+  }
+}
+
+/**
  * Load tools configuration
  */
 export function loadToolsConfig(): ToolsConfig | null {
@@ -214,8 +240,18 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
   const toolsConfig: ToolsConfig = { mcpTools: {} };
 
   for (const [serverAlias, serverConfig] of Object.entries(config.mcpServers)) {
-    const serverUrl = getServerUrl(serverConfig);
-    console.log(`🔍 Discovering tools from ${serverAlias} (${serverUrl})...`);
+    // Validate server configuration before attempting connection
+    try {
+      validateServerConfig(serverConfig);
+    } catch (error) {
+      console.error(`❌ Invalid configuration for server '${serverAlias}':`, error);
+      continue;
+    }
+
+    const serverDescription = isStdioServer(serverConfig)
+      ? `${serverConfig.command} ${(serverConfig.args || []).join(' ')}`
+      : getServerUrl(serverConfig);
+    console.log(`🔍 Discovering tools from ${serverAlias} (${serverDescription})...`);
 
     try {
       const client = await createClient(serverConfig, debugLog);

@@ -1,6 +1,6 @@
 # terminal-mcp
 
-A minimal, zero-dependency terminal-based MCP client that makes it easy to call tools from remote (Streamable HTTP) MCP servers using terminal commands.
+A minimal, zero-dependency terminal-based MCP client that makes it easy to call tools from MCP servers (both remote HTTP and local stdio) using terminal commands.
 
 This project was created to add MCP support for coding agents that do not currently support MCP, such as OpenAI's Codex Cloud SWE Agent.
 
