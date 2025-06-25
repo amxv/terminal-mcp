@@ -157,7 +157,7 @@ Before any release, the scripts verify:
 Users can install your CLI with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-username/terminal-mcp/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/zueai/terminal-mcp/main/install.sh | bash
 ```
 
 The install script:
@@ -170,7 +170,7 @@ The install script:
 
 Users can also download binaries directly from GitHub Releases:
 
-1. Go to the [releases page](https://github.com/your-username/terminal-mcp/releases)
+1. Go to the [releases page](https://github.com/zueai/terminal-mcp/releases)
 2. Download the appropriate `.tar.gz` for their platform
 3. Extract and move to their PATH
 

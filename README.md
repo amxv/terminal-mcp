@@ -14,12 +14,12 @@ A command-line tool for interacting with MCP (Model Context Protocol) Streamable
 ### Quick Install (Recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-username/terminal-mcp/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/zueai/terminal-mcp/main/install.sh | bash
 ```
 
 ### Manual Installation
 
-1. Download the appropriate binary for your platform from the [releases page](https://github.com/your-username/terminal-mcp/releases)
+1. Download the appropriate binary for your platform from the [releases page](https://github.com/zueai/terminal-mcp/releases)
 2. Extract the archive: `tar -xzf terminal-mcp-*.tar.gz`
 3. Move to your PATH: `sudo mv terminal-mcp-* /usr/local/bin/terminal-mcp`
 4. Make executable: `sudo chmod +x /usr/local/bin/terminal-mcp`
@@ -65,7 +65,7 @@ terminal-mcp run search-files "*.ts" --endpoint=http://localhost:8123/mcp
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/terminal-mcp.git
+git clone https://github.com/zueai/terminal-mcp.git
 cd terminal-mcp
 bun install
 ```
