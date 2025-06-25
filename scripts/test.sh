@@ -205,17 +205,32 @@ test_configuration_functionality() {
 }
 EOF
 
-    # Test init command
-    run_test "Initialize configuration" \
-        "$TMCP_CMD init" \
-        "Initialization complete|Generated tools configuration"
+    # Test discover command
+    run_test "Discover tools from servers" \
+        "$TMCP_CMD discover" \
+        "Discovery complete|Generated all-tools configuration"
 
-    # Verify configuration files were created
-    if [[ -f "terminal-mcp/servers.json" && -f "terminal-mcp/tools.json" ]]; then
-        log_success "Configuration files created"
+    # Verify all-tools.json was created
+    if [[ -f "terminal-mcp/servers.json" && -f "terminal-mcp/all-tools.json" ]]; then
+        log_success "Discovery files created"
         ((TESTS_PASSED++))
     else
-        log_error "Configuration files not created"
+        log_error "Discovery files not created"
+        ((TESTS_FAILED++))
+    fi
+    ((TESTS_RUN++))
+
+    # Test init command (filter enabled tools)
+    run_test "Initialize available tools configuration" \
+        "$TMCP_CMD init" \
+        "Initialization complete|Generated allowed-tools configuration"
+
+    # Verify allowed-tools.json was created
+    if [[ -f "terminal-mcp/allowed-tools.json" ]]; then
+        log_success "Available tools configuration created"
+        ((TESTS_PASSED++))
+    else
+        log_error "Available tools configuration not created"
         ((TESTS_FAILED++))
     fi
     ((TESTS_RUN++))
@@ -267,9 +282,13 @@ test_error_conditions() {
         "$TMCP_CMD call some__tool '{\"param\": \"value\"}'" \
         "No tools configuration found|Run.*tmcp init"
 
-    run_test_expect_failure "Init without mcp.json" \
-        "$TMCP_CMD init" \
+    run_test_expect_failure "Discover without mcp.json" \
+        "$TMCP_CMD discover" \
         "No mcp.json configuration file found"
+
+    run_test_expect_failure "Init without all-tools.json" \
+        "$TMCP_CMD init" \
+        "No all-tools.json found|Run.*tmcp discover"
 
     cd "$TEST_DIR"
     rm -rf "$clean_dir"

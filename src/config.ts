@@ -14,7 +14,13 @@ export interface McpConfig {
 }
 
 export interface ToolInfo {
-  enabled: boolean;
+  enabled?: boolean;
+  example_terminal_command: string;
+  description: string;
+  parameters: any;
+}
+
+export interface AvailableToolInfo {
   example_terminal_command: string;
   description: string;
   parameters: any;
@@ -22,6 +28,10 @@ export interface ToolInfo {
 
 export interface ToolsConfig {
   mcpTools: Record<string, ToolInfo>;
+}
+
+export interface AvailableToolsConfig {
+  mcpTools: Record<string, AvailableToolInfo>;
 }
 
 /**
@@ -142,8 +152,8 @@ export function getServerUrl(config: McpServerConfig): string {
 /**
  * Load tools configuration
  */
-export function loadToolsConfig(): ToolsConfig | null {
-  const toolsPath = "./terminal-mcp/tools.json";
+export function loadToolsConfig(): AvailableToolsConfig | null {
+  const toolsPath = "./terminal-mcp/allowed-tools.json";
 
   if (!existsSync(toolsPath)) {
     return null;
@@ -151,7 +161,7 @@ export function loadToolsConfig(): ToolsConfig | null {
 
   try {
     const toolsContent = readFileSync(toolsPath, "utf-8");
-    return JSON.parse(toolsContent) as ToolsConfig;
+    return JSON.parse(toolsContent) as AvailableToolsConfig;
   } catch (error) {
     console.error(`❌ Failed to parse tools configuration:`, error);
     return null;
@@ -178,10 +188,10 @@ export function loadMcpConfig(): McpConfig | null {
 }
 
 /**
- * Initialize terminal-mcp configuration
+ * Discover and aggregate tools from all configured MCP servers
  */
-export async function initConfig(debugLog: (message: string, ...args: any[]) => void, customConfigPath?: string) {
-  debugLog("Initializing terminal-mcp configuration...");
+export async function discoverConfig(debugLog: (message: string, ...args: any[]) => void, customConfigPath?: string) {
+  debugLog("Discovering tools from MCP servers...");
 
   // Find mcp.json config
   const config = findMcpConfig(customConfigPath);
@@ -256,20 +266,83 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
     }
   }
 
-  // Write tools configuration
-  const toolsPath = join(terminalMcpDir, "tools.json");
-  writeFileSync(toolsPath, JSON.stringify(toolsConfig, null, 2));
+  // Write all-tools configuration
+  const allToolsPath = join(terminalMcpDir, "all-tools.json");
+  writeFileSync(allToolsPath, JSON.stringify(toolsConfig, null, 2));
 
   const toolCount = Object.keys(toolsConfig.mcpTools).length;
-  console.log(`✅ Generated tools configuration with ${toolCount} tools at ${toolsPath}`);
+  console.log(`✅ Generated all-tools configuration with ${toolCount} tools at ${allToolsPath}`);
 
   if (toolCount === 0) {
     console.warn("⚠️  No tools were discovered. Check your server configurations.");
   } else {
+    console.log("\n🎉 Discovery complete! Next steps:");
+    console.log("  1. Review and edit all-tools.json to disable any unwanted tools");
+    console.log("  2. Run 'tmcp init' to create the allowed-tools.json for AI agents");
+    console.log("\nExample tools discovered:");
+    Object.keys(toolsConfig.mcpTools).slice(0, 3).forEach(alias => {
+      console.log(`  ${alias}`);
+    });
+  }
+}
+
+/**
+ * Initialize terminal-mcp configuration by filtering enabled tools from all-tools.json
+ */
+export async function initConfig(debugLog: (message: string, ...args: any[]) => void, customConfigPath?: string) {
+  debugLog("Initializing terminal-mcp configuration...");
+
+  // Check if all-tools.json exists
+  const terminalMcpDir = "./terminal-mcp";
+  const allToolsPath = join(terminalMcpDir, "all-tools.json");
+
+  if (!existsSync(allToolsPath)) {
+    console.error("❌ No all-tools.json found. Run 'tmcp discover' first to discover tools from your MCP servers.");
+    console.error("Expected file: " + allToolsPath);
+    process.exit(1);
+  }
+
+  // Load all-tools configuration
+  let allToolsConfig: ToolsConfig;
+  try {
+    const allToolsContent = readFileSync(allToolsPath, "utf-8");
+    allToolsConfig = JSON.parse(allToolsContent) as ToolsConfig;
+  } catch (error) {
+    console.error(`❌ Failed to parse all-tools configuration:`, error);
+    process.exit(1);
+  }
+
+  // Filter enabled tools
+  const availableToolsConfig: AvailableToolsConfig = { mcpTools: {} };
+  let enabledCount = 0;
+  let totalCount = 0;
+
+  for (const [toolAlias, toolInfo] of Object.entries(allToolsConfig.mcpTools)) {
+    totalCount++;
+    if (toolInfo.enabled) {
+      // Remove the enabled property when copying to allowed-tools
+      const { enabled, ...toolWithoutEnabled } = toolInfo;
+      availableToolsConfig.mcpTools[toolAlias] = toolWithoutEnabled;
+      enabledCount++;
+      debugLog(`✅ Enabled tool: ${toolAlias}`);
+    } else {
+      debugLog(`⏭️  Skipped disabled tool: ${toolAlias}`);
+    }
+  }
+
+  // Write allowed-tools configuration
+  const availableToolsPath = join(terminalMcpDir, "allowed-tools.json");
+  writeFileSync(availableToolsPath, JSON.stringify(availableToolsConfig, null, 2));
+
+  console.log(`✅ Generated allowed-tools configuration with ${enabledCount}/${totalCount} tools at ${availableToolsPath}`);
+
+  if (enabledCount === 0) {
+    console.warn("⚠️  No tools are enabled. Edit all-tools.json to enable some tools, then run 'tmcp init' again.");
+  } else {
     console.log("\n🎉 Initialization complete! You can now use:");
     console.log("  tmcp call <tool-alias> '<json-args>'");
-    console.log("\nExample tools:");
-    Object.keys(toolsConfig.mcpTools).slice(0, 3).forEach(alias => {
+    console.log("\nExample enabled tools:");
+    Object.keys(availableToolsConfig.mcpTools).slice(0, 3).forEach(alias => {
       console.log(`  tmcp call ${alias} <json-args>`);
     });
   }
