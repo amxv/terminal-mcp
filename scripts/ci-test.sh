@@ -18,6 +18,13 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
+# Load environment variables if .env exists
+if [[ -f ".env" ]]; then
+    echo -e "${BLUE}Loading environment variables...${NC}"
+    source .env
+    export REF_API_KEY
+fi
+
 # Quick smoke tests
 echo -e "\n${BLUE}1. Building project...${NC}"
 if bun run build:current >/dev/null 2>&1; then
@@ -112,7 +119,64 @@ else
     exit 1
 fi
 
-echo -e "\n${BLUE}4. Testing agent safety controls...${NC}"
+echo -e "\n${BLUE}4. Testing authenticated server functionality...${NC}"
+
+if [[ -n "$REF_API_KEY" ]]; then
+    # Create authenticated config
+    cat > mcp-auth.json << EOF
+{
+  "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "ref": {
+      "command": "bunx",
+      "args": ["ref-tools-mcp@latest"],
+      "env": {
+        "REF_API_KEY": "$REF_API_KEY"
+      }
+    }
+  }
+}
+EOF
+
+    if "$PROJECT_ROOT/$BINARY" --configpath mcp-auth.json init >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Authenticated server init works${NC}"
+    else
+        echo -e "${RED}✗ Authenticated server init failed${NC}"
+        cd "$PROJECT_ROOT"
+        rm -rf "$TEST_DIR"
+        exit 1
+    fi
+
+    if "$PROJECT_ROOT/$BINARY" --configpath mcp-auth.json list >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Authenticated server list works${NC}"
+    else
+        echo -e "${RED}✗ Authenticated server list failed${NC}"
+        cd "$PROJECT_ROOT"
+        rm -rf "$TEST_DIR"
+        exit 1
+    fi
+
+    # Test agent with authenticated server (copy config to default location)
+    cp mcp-auth.json mcp.json
+    "$PROJECT_ROOT/$BINARY" init >/dev/null 2>&1
+
+    if "$PROJECT_ROOT/$AGENT_BINARY" list >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Agent works with authenticated server${NC}"
+    else
+        echo -e "${RED}✗ Agent fails with authenticated server${NC}"
+        cd "$PROJECT_ROOT"
+        rm -rf "$TEST_DIR"
+        exit 1
+    fi
+
+    rm -f mcp-auth.json
+else
+    echo -e "${GREEN}✓ Authenticated server tests skipped (no API key)${NC}"
+fi
+
+echo -e "\n${BLUE}5. Testing agent safety controls...${NC}"
 
 # Test that agent blocks dangerous commands
 if "$PROJECT_ROOT/$AGENT_BINARY" init >/dev/null 2>&1; then

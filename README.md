@@ -2,7 +2,9 @@
 
 ## A minimal, zero-dependency terminal MCP client built for coding agents.
 
-This project lets coding agents without native MCP support call MCP tools using simple terminal commands. Supports both local (via stdio) and remote (via streamable HTTP) MCP servers.
+This project lets coding agents without native MCP support (like OpenAI's Codex) call MCP tools using simple terminal commands.
+
+Supports both local (via stdio) and remote (via streamable HTTP) MCP servers.
 
 ## Features
 
@@ -12,7 +14,7 @@ This project lets coding agents without native MCP support call MCP tools using 
 - 🔧 **Supports mcp.json config**: Support for common configuration files from popular MCP clients (Cursor, Claude Code, etc.)
 - 🔐 **Authentication**: Support for custom headers and environment variables
 - 🎯 **Direct Tool Calls**: Connect to any MCP server without configuration
-- 📦 **Agent-Safe Binary**: Zero risk of config changes or bypassing security controls because your agent literally gets a different binary that allows listing and calling pre-configured tools.
+- 📦 **Agent-Safe Binary**: Zero risk of config changes or bypassing security controls because your agent literally gets a different binary that only allows listing and calling pre-configured tools.
 
 ---
 

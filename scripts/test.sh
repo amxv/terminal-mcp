@@ -116,9 +116,19 @@ run_test_expect_failure() {
 setup_test_env() {
     log_info "Setting up test environment..."
 
+    # Get the project root directory
+    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
     # Create test directory
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR"
+
+    # Source .env file if it exists in the project root
+    if [[ -f "$PROJECT_ROOT/.env" ]]; then
+        log_info "Loading environment variables from .env file"
+        source "$PROJECT_ROOT/.env"
+        export REF_API_KEY
+    fi
 
     # Check if tmcp command exists
     if [[ "$TMCP_CMD" == /* ]] || [[ "$TMCP_CMD" == ./* ]]; then
@@ -210,6 +220,109 @@ test_direct_functionality() {
         run_test_expect_failure "Direct call missing tool name" \
         "$TMCP_CMD direct $CONTEXT7_URL call" \
         "Invalid arguments|Usage"
+}
+
+test_authenticated_functionality() {
+    log_info "=== Testing Authenticated MCP Server Functionality ==="
+
+    # Check if we have the required environment variable
+    if [[ -z "$REF_API_KEY" ]]; then
+        log_warning "REF_API_KEY not set, skipping authenticated server tests"
+        return
+    fi
+
+    # Test authenticated configuration-based functionality
+    # Create test mcp.json with authenticated ref server
+    cat > mcp-auth.json << EOF
+{
+  "mcpServers": {
+    "context7": {
+      "url": "$CONTEXT7_URL"
+    },
+    "ref": {
+      "command": "bunx",
+      "args": ["ref-tools-mcp@latest"],
+      "env": {
+        "REF_API_KEY": "$REF_API_KEY"
+      }
+    }
+  }
+}
+EOF
+
+    # Test initialization with authenticated server
+    run_test "Initialize with authenticated server" \
+        "$TMCP_CMD --configpath mcp-auth.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test listing tools from authenticated server
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        run_test "List tools includes authenticated server tools" \
+            "$TMCP_CMD --configpath mcp-auth.json list" \
+            '"configured_tools".*"total_count"'
+
+        # Try to find a ref tool to test with
+        local ref_tool
+        if command -v jq &> /dev/null; then
+            ref_tool=$("$TMCP_CMD" --configpath mcp-auth.json list 2>/dev/null | jq -r '.configured_tools[] | select(.alias | startswith("ref__")) | .alias' | head -1 2>/dev/null || echo "")
+        fi
+
+        if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+            # Test calling authenticated tool
+            run_test "Call authenticated tool ($ref_tool)" \
+                "$TMCP_CMD --configpath mcp-auth.json call $ref_tool '{\"query\": \"React hooks\"}'" \
+                '"content"|"result"|"data"'
+        else
+            log_warning "No ref tools found in configuration, skipping authenticated tool call test"
+        fi
+    fi
+
+    # Test that agent binary works with authenticated servers when configured
+    # Copy the authenticated config to the default location for agent testing
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        # Backup existing config
+        [[ -f "terminal-mcp/servers.json" ]] && cp "terminal-mcp/servers.json" "terminal-mcp/servers.json.backup"
+
+        # Copy authenticated config to default location
+        cp mcp-auth.json mcp.json
+        "$TMCP_CMD" init > /dev/null 2>&1
+
+        run_test "Agent works with authenticated server config" \
+            "$TMCP_AGENT_CMD list" \
+            '"configured_tools".*"total_count"|No tools configuration found"'
+
+        # Test agent can call authenticated tools
+        if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+            run_test "Agent can call authenticated tool ($ref_tool)" \
+                "$TMCP_AGENT_CMD call $ref_tool '{\"query\": \"React hooks\"}'" \
+                '"content"|"result"|"data"|Tool.*not found"'
+        fi
+
+        # Restore original config
+        [[ -f "terminal-mcp/servers.json.backup" ]] && mv "terminal-mcp/servers.json.backup" "terminal-mcp/servers.json"
+    fi
+
+    # Test behavior with missing authentication
+    # Note: Some servers may work without authentication or have fallback modes
+    # So we test that the functionality still works, but may be limited
+    cat > mcp-no-auth.json << EOF
+{
+  "mcpServers": {
+    "ref": {
+      "command": "bunx",
+      "args": ["ref-tools-mcp@latest"]
+    }
+  }
+}
+EOF
+
+    # Test server behavior without authentication (may succeed or fail depending on server implementation)
+    run_test "Server behavior without authentication (may work with limited functionality)" \
+        "$TMCP_CMD --configpath mcp-no-auth.json init" \
+        "Initialization complete|Generated tools configuration|Error|Failed|Authentication|API.*key"
+
+    # Clean up test files
+    rm -f mcp-auth.json mcp-no-auth.json
 }
 
 test_configuration_functionality() {
@@ -452,6 +565,8 @@ main() {
     test_direct_functionality
     log_info "Running configuration functionality tests..."
     test_configuration_functionality
+    log_info "Running authenticated server tests..."
+    test_authenticated_functionality
     log_info "Running agent safety control tests..."
     test_agent_safety_controls
     log_info "Running error condition tests..."

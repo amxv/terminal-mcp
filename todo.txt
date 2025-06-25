@@ -2,4 +2,3 @@
 [x] Support local stdio servers (including local stdio proxies like `mcp-remote`)
 [ ] Support remote SSE servers
 [ ] Verify that custom headers, env variables are working for authed servers
-[ ] Add `codex` command that provides a guided flow to setting up terminal-mcp for Codex usage, also provide helper commands to print currently allowed tools and instructions draft to be added to `AGENTS.md` that Codex uses to understand how to use terminal-mcp.
