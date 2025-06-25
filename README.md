@@ -113,10 +113,10 @@ You have access to MCP (Model Context Protocol) tools via the `tmcp` CLI. These 
 tmcp list
 
 # Search documentation (example with ref tool)
-tmcp call ref__search-documentation '{"query": "React useState hook examples"}'
+tmcp call ref__ref_search_documentation '{"query": "React useState hook examples"}'
 
 # Resolve a library ID (example with context7 tool)
-tmcp call context7__resolve-library-id '{"libraryName": "express"}'
+tmcp call context7__resolve_library_id '{"libraryName": "express"}'
 ```
 
 ### Important Notes
@@ -229,7 +229,7 @@ Call tools using their generated aliases (format: `server__tool-name`). Only ena
 tmcp call context7__resolve-library-id '{"libraryName": "react"}'
 
 # Call with debug output
-tmcp --debug call ref__search-documentation '{"query": "React hooks"}'
+tmcp --debug call ref__ref_search_documentation '{"query": "React hooks"}'
 ```
 
 ### `direct` - Direct Server Communication
