@@ -23,7 +23,7 @@ Commands:
 Examples:
   tmcp list
   tmcp call context7__resolve-library-id '{"libraryName": "react"}'
-  tmcp call ref__ref_search_documentation '{"query": "React hooks"}'`);
+  tmcp call ref__search_documentation '{"query": "React hooks"}'`);
 }
 
 const { values, positionals } = parseArgs({
