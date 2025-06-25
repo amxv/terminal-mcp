@@ -1,10 +1,10 @@
-# MCP CLI
+# terminal-mcp
 
-A command-line tool for interacting with MCP (Model Context Protocol) Streamable-HTTP servers.
+A minimal command-line MCP client that makes it easy to call tools from remote (Streamable HTTP) MCP servers using terminal commands. This project was created to add MCP support for coding agents like OpenAI's Codex.
 
 ## Features
 
-- 🚀 **Zero Dependencies**: Standalone executables that don't require Node.js or Bun to be installed
+- 🚀 **Zero Dependencies**: Standalone executables that don't require Node.js, Bun, or any other runtime to be installed
 - 🌐 **Cross-Platform**: Works on macOS (Intel & Apple Silicon), Linux (x64 & ARM64)
 - 📡 **Streaming Support**: Handles both JSON and Server-Sent Events responses
 - ⚡ **Fast Startup**: Launches in under 100ms

@@ -29,7 +29,7 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-echo -e "${CYAN}🚀 MCP CLI Release Status${NC}"
+echo -e "${CYAN}🚀 terminal-mcp Release Status${NC}"
 echo
 
 # Check if we're in a git repository
