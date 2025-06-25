@@ -2,7 +2,7 @@
 
 ## A minimal, zero-dependency terminal MCP client built for coding agents.
 
----
+
 This project was created to provide coding agents access to local and remote MCP servers, such as OpenAI's Codex Cloud SWE Agent.
 
 ## Features
