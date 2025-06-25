@@ -132,7 +132,7 @@ async function callTool(endpoint: string, toolName: string, params: string) {
 (async () => {
   const [command, ...args] = positionals;
 
-  debugLog("=== Terminal MCP Client Starting ===");
+  debugLog("=== terminal-mcp Starting ===");
   debugLog("Command:", command);
   debugLog("Arguments:", args);
   debugLog("Debug mode:", debug);
@@ -167,7 +167,7 @@ async function callTool(endpoint: string, toolName: string, params: string) {
       }
 
       default:
-        console.log(`Terminal MCP Client
+        console.log(`terminal-mcp
 
 Usage: terminal-mcp <command> [options]
 

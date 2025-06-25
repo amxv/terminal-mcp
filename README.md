@@ -37,23 +37,25 @@ curl -fsSL https://raw.githubusercontent.com/zueai/terminal-mcp/main/install.sh 
 
 ```bash
 # List available tools from the server
-terminal-mcp tools
+terminal-mcp list <endpoint-url>
 
-# Run a specific tool
-terminal-mcp run <tool-name> [arguments...]
-
-# Use a custom endpoint
-terminal-mcp tools --endpoint=https://your-server.com/mcp
+# Call a specific tool
+terminal-mcp call <endpoint-url> <tool-name> <json-params>
 ```
 
 ### Examples
 
 ```bash
-# Connect to a local MCP server
-terminal-mcp tools --endpoint=http://localhost:8123/mcp
+# List capabilities from a local MCP server
+terminal-mcp list http://localhost:8123/mcp
 
-# Run a tool with arguments
-terminal-mcp run search-files "*.ts" --endpoint=http://localhost:8123/mcp
+# Call a tool with JSON parameters
+terminal-mcp call http://localhost:8123/mcp search-files '{"pattern": "*.ts"}'
+
+# Call Context7 MCP server tools
+terminal-mcp list https://mcp.context7.com/mcp
+terminal-mcp call https://mcp.context7.com/mcp resolve-library-id '{"libraryName": "react"}'
+terminal-mcp call https://mcp.context7.com/mcp get-library-docs '{"context7CompatibleLibraryID": "/facebook/react"}'
 ```
 
 ## Development
@@ -99,7 +101,7 @@ bun install && bun run build && bun run start
 
 Then in another terminal:
 ```bash
-terminal-mcp tools --endpoint=http://localhost:8123/mcp
+terminal-mcp list http://localhost:8123/mcp
 ```
 
 ## How It Works
