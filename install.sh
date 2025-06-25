@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Terminal MCP - Full Developer Version Installer
+# For AI agents, use install-agent.sh instead
+
 # Configuration
 REPO="zueai/terminal-mcp"  # Update this with your GitHub repo
 VERSION="latest"

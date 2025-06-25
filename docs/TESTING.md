@@ -14,12 +14,13 @@ This document describes the testing setup for terminal-mcp and how to run tests 
 
 - Direct server communication (`tmcp direct <url> list/call`)
 - Configuration-based usage (`tmcp init`, `tmcp list`, `tmcp call`)
+- Agent safety controls (agent binary restrictions)
 - Error handling and edge cases
 - Help and usage commands
 
-**Output:** Detailed test execution with individual test results (20 tests total)
+**Output:** Detailed test execution with individual test results (~30 tests total)
 
-**Duration:** ~10-15 seconds
+**Duration:** ~15-20 seconds
 
 ### 2. Quick Regression Test (CI)
 
@@ -29,13 +30,14 @@ This document describes the testing setup for terminal-mcp and how to run tests 
 
 **Description:** Fast smoke tests for core functionality:
 
-- Build verification
+- Build verification (both main and agent binaries)
 - Basic direct functionality
 - Basic configuration functionality
+- Agent safety control verification
 
 **Output:** Simple pass/fail indicators
 
-**Duration:** ~5 seconds
+**Duration:** ~8 seconds
 
 ## Test Server
 
@@ -65,6 +67,16 @@ This document describes the testing setup for terminal-mcp and how to run tests 
 - ✅ Error handling for invalid tool aliases
 - ✅ Error handling for invalid JSON parameters
 
+### Agent Safety Control Tests
+- ✅ Agent binary blocks `init` command
+- ✅ Agent binary blocks `direct` command
+- ✅ Agent binary blocks `--configpath` option
+- ✅ Agent binary allows `list` command
+- ✅ Agent binary allows `call` command
+- ✅ Agent binary allows `--help` and `--version`
+- ✅ Agent binary provides helpful error messages
+- ✅ Agent binary requires proper configuration
+
 ### Error Condition Tests
 - ✅ Commands without configuration
 - ✅ Commands with missing files
@@ -84,7 +96,7 @@ This document describes the testing setup for terminal-mcp and how to run tests 
 ### Quick Start
 
 ```bash
-# Full test suite
+# Full test suite (includes agent safety tests)
 bun run test
 
 # Quick regression check
@@ -92,15 +104,17 @@ bun run test:ci
 
 # Manual test of specific functionality
 ./dist/terminal-mcp-macos-arm64 direct https://mcp.context7.com/mcp list
+./dist/terminal-mcp-agent-macos-arm64 list
 ```
 
 ### Environment Variables
 
 - `TMCP_CMD` - Override the tmcp binary path for testing
+- `TMCP_AGENT_CMD` - Override the tmcp agent binary path for testing
 
 Example:
 ```bash
-TMCP_CMD="/custom/path/to/tmcp" ./scripts/test.sh
+TMCP_CMD="/custom/path/to/tmcp" TMCP_AGENT_CMD="/custom/path/to/tmcp-agent" ./scripts/test.sh
 ```
 
 ## Test Structure
@@ -127,6 +141,31 @@ scripts/
 ✗ Feature failed
 ```
 
+## Agent Safety Controls
+
+The test suite includes specific tests to verify that the agent binary (`terminal-mcp-agent`) implements proper security restrictions:
+
+### Security Boundaries Tested
+
+**🚫 Blocked Operations:**
+- `tmcp init` - Cannot modify tool configurations
+- `tmcp direct <url> <command>` - Cannot bypass pre-configured servers
+- `--configpath <path>` - Cannot switch to different config files
+- Unknown commands - Proper error handling
+
+**✅ Allowed Operations:**
+- `tmcp list` - View configured and enabled tools
+- `tmcp call <tool-alias> <params>` - Execute specific tools
+- `tmcp --help` - Show usage information
+- `tmcp --version` - Show version information
+
+### Test Methodology
+
+1. **Positive Tests:** Verify agent binary accepts safe commands
+2. **Negative Tests:** Verify agent binary rejects dangerous commands
+3. **Error Message Tests:** Verify proper error messages for blocked operations
+4. **Configuration Tests:** Verify agent requires proper configuration files
+
 ## Adding New Tests
 
 ### To add a new test to the comprehensive suite:
@@ -134,6 +173,13 @@ scripts/
 1. Add test function to `scripts/test.sh`
 2. Call the function from the appropriate test section
 3. Use `run_test` for success tests or `run_test_expect_failure` for error tests
+
+### To add a new agent safety test:
+
+1. Add test to `test_agent_safety_controls()` function in `scripts/test.sh`
+2. Use `run_test_expect_failure` for blocked operations
+3. Use `run_test` for allowed operations
+4. Update CI tests in `scripts/ci-test.sh` if needed
 
 ### To add a new test to the CI suite:
 
@@ -146,6 +192,7 @@ scripts/
 - **Cleanup:** Automatic cleanup on exit (including interrupts)
 - **Cross-platform:** Tests work on macOS and Linux
 - **No side effects:** Tests don't modify the project directory
+- **Dual Binary Testing:** Tests both main and agent binaries
 
 ## Future Enhancements
 
@@ -153,3 +200,4 @@ scripts/
 - [ ] Add performance benchmarks
 - [ ] Add integration tests with local MCP servers
 - [ ] Add tests for custom headers and environment variables
+- [ ] Add tests for agent binary installation scripts

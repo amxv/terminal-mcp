@@ -1,29 +1,8 @@
 #!/usr/bin/env bun
 import { parseArgs } from "util";
-import { readFileSync } from "fs";
-import { join } from "path";
+import { showVersion, getVersion, createDebugLogger, exitWithError } from "./cli-common";
 import { initConfig } from "./config";
 import { callToolByAlias, listConfiguredTools, listToolsDirect, callToolDirect } from "./tools";
-
-// Get package version
-function getVersion(): string {
-  try {
-    const packagePath = join(__dirname, "..", "package.json");
-    const packageJson = JSON.parse(readFileSync(packagePath, "utf-8"));
-    return packageJson.version || "unknown";
-  } catch (error) {
-    return "unknown";
-  }
-}
-
-// Display version information
-function showVersion() {
-  const version = getVersion();
-  console.log(`terminal-mcp v${version}`);
-  console.log("CLI tool for interacting with MCP servers (HTTP and stdio)");
-  console.log("License: MIT");
-  console.log("Repository: https://github.com/zueai/terminal-mcp");
-}
 
 // Display help information
 function showHelp() {
@@ -88,12 +67,7 @@ const help = values.help as boolean;
 const version = values.version as boolean;
 const configPath = values.configpath as string;
 
-// Debug logging function
-function debugLog(...args: any[]) {
-  if (debug) {
-    console.error("[DEBUG]", ...args);
-  }
-}
+const debugLog = createDebugLogger(debug);
 
 // Handle help and version flags first
 if (help) {

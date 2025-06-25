@@ -86,3 +86,43 @@ jobs:
         asset_path: ./dist/terminal-mcp-linux-arm64.tar.gz
         asset_name: terminal-mcp-linux-arm64.tar.gz
         asset_content_type: application/gzip
+
+    - name: Upload Agent Linux x64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/terminal-mcp-agent-linux-x64.tar.gz
+        asset_name: terminal-mcp-agent-linux-x64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Agent Linux ARM64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/terminal-mcp-agent-linux-arm64.tar.gz
+        asset_name: terminal-mcp-agent-linux-arm64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Agent macOS ARM64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/terminal-mcp-agent-macos-arm64.tar.gz
+        asset_name: terminal-mcp-agent-macos-arm64.tar.gz
+        asset_content_type: application/gzip
+
+    - name: Upload Agent macOS x64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/terminal-mcp-agent-macos-x64.tar.gz
+        asset_name: terminal-mcp-agent-macos-x64.tar.gz
+        asset_content_type: application/gzip

@@ -47,26 +47,36 @@ if ! bun install; then
 fi
 log_success "Dependencies installed"
 
-# Build the project
-log_info "Building project for current platform..."
+# Build the project (both main and agent binaries)
+log_info "Building project for current platform (main and agent)..."
 if ! bun run build:current; then
     log_error "Build failed"
     exit 1
 fi
+
+if ! bun run build:agent-current; then
+    log_error "Agent build failed"
+    exit 1
+fi
+
 log_success "Build completed"
 
-# Determine the built binary path
+# Determine the built binary paths
 if [[ "$OSTYPE" == "darwin"* ]]; then
     if [[ $(uname -m) == "arm64" ]]; then
         BINARY_PATH="dist/terminal-mcp-macos-arm64"
+        AGENT_BINARY_PATH="dist/terminal-mcp-agent-macos-arm64"
     else
         BINARY_PATH="dist/terminal-mcp-macos-x64"
+        AGENT_BINARY_PATH="dist/terminal-mcp-agent-macos-x64"
     fi
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     if [[ $(uname -m) == "aarch64" ]]; then
         BINARY_PATH="dist/terminal-mcp-linux-arm64"
+        AGENT_BINARY_PATH="dist/terminal-mcp-agent-linux-arm64"
     else
         BINARY_PATH="dist/terminal-mcp-linux-x64"
+        AGENT_BINARY_PATH="dist/terminal-mcp-agent-linux-x64"
     fi
 else
     log_error "Unsupported platform: $OSTYPE"
@@ -78,11 +88,18 @@ if [[ ! -f "$BINARY_PATH" ]]; then
     exit 1
 fi
 
-log_success "Binary found at: $BINARY_PATH"
+if [[ ! -f "$AGENT_BINARY_PATH" ]]; then
+    log_error "Built agent binary not found at: $AGENT_BINARY_PATH"
+    exit 1
+fi
+
+log_success "Main binary found at: $BINARY_PATH"
+log_success "Agent binary found at: $AGENT_BINARY_PATH"
 
 # Run tests
 log_info "Running comprehensive tests..."
 export TMCP_CMD="$(realpath "$PROJECT_ROOT/$BINARY_PATH")"
+export TMCP_AGENT_CMD="$(realpath "$PROJECT_ROOT/$AGENT_BINARY_PATH")"
 
 if "$SCRIPT_DIR/test.sh"; then
     log_success "All tests passed!"

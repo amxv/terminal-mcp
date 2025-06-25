@@ -16,6 +16,7 @@ NC='\033[0m' # No Color
 CONTEXT7_URL="https://mcp.context7.com/mcp"
 TEST_DIR="/tmp/tmcp-test-$$"
 TMCP_CMD="${TMCP_CMD:-./terminal-mcp}"
+TMCP_AGENT_CMD="${TMCP_AGENT_CMD:-./terminal-mcp-agent}"
 
 # Test counters
 TESTS_RUN=0
@@ -135,6 +136,26 @@ setup_test_env() {
         if ! command -v "$TMCP_CMD" &> /dev/null; then
             log_error "tmcp command not found in PATH: $TMCP_CMD"
             log_info "Please build the project first or set TMCP_CMD environment variable"
+            exit 1
+        fi
+    fi
+
+    # Check if tmcp-agent command exists
+    if [[ "$TMCP_AGENT_CMD" == /* ]] || [[ "$TMCP_AGENT_CMD" == ./* ]]; then
+        # Absolute or relative path - check if file exists and is executable
+        if [[ ! -f "$TMCP_AGENT_CMD" ]]; then
+            log_error "tmcp-agent command not found at: $TMCP_AGENT_CMD"
+            log_info "Please build the project first or set TMCP_AGENT_CMD environment variable"
+            exit 1
+        elif [[ ! -x "$TMCP_AGENT_CMD" ]]; then
+            log_error "tmcp-agent command at $TMCP_AGENT_CMD is not executable"
+            exit 1
+        fi
+    else
+        # Command name - check if it's in PATH
+        if ! command -v "$TMCP_AGENT_CMD" &> /dev/null; then
+            log_error "tmcp-agent command not found in PATH: $TMCP_AGENT_CMD"
+            log_info "Please build the project first or set TMCP_AGENT_CMD environment variable"
             exit 1
         fi
     fi
@@ -279,6 +300,82 @@ EOF
     fi
 }
 
+test_agent_safety_controls() {
+    log_info "=== Testing Agent Safety Controls ==="
+
+    # First create configuration using full CLI for the agent tests
+    cat > mcp.json << EOF
+{
+  "mcpServers": {
+    "context7": {
+      "url": "$CONTEXT7_URL"
+    }
+  }
+}
+EOF
+
+    # Initialize configuration with full CLI
+    "$TMCP_CMD" init > /dev/null 2>&1 || log_warning "Could not initialize config for agent tests"
+
+    # Test that agent binary blocks dangerous commands
+    run_test_expect_failure "Agent blocks init command" \
+        "$TMCP_AGENT_CMD init" \
+        "Unknown command.*init|Available commands.*list.*call"
+
+    run_test_expect_failure "Agent blocks direct command" \
+        "$TMCP_AGENT_CMD direct $CONTEXT7_URL list" \
+        "Unknown command.*direct|Available commands.*list.*call"
+
+    run_test_expect_failure "Agent blocks configpath option" \
+        "$TMCP_AGENT_CMD --configpath /tmp/test.json list" \
+        "Unknown option|configpath"
+
+    # Test that agent binary allows safe commands
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        run_test "Agent allows list command" \
+            "$TMCP_AGENT_CMD list" \
+            '"configured_tools".*"total_count"|No tools configuration found"'
+
+        # Get a tool alias for testing
+        local tool_alias
+        tool_alias=$("$TMCP_AGENT_CMD" list 2>/dev/null | jq -r '.configured_tools[0].alias' 2>/dev/null || echo "context7__resolve-library-id")
+
+        if [[ "$tool_alias" != "null" && -n "$tool_alias" ]]; then
+            run_test "Agent allows call command ($tool_alias)" \
+                "$TMCP_AGENT_CMD call $tool_alias '{\"libraryName\": \"react\"}'" \
+                '"content"'
+        else
+            # Test with fallback if tools.json parsing fails
+            run_test "Agent allows call command (fallback)" \
+                "$TMCP_AGENT_CMD call context7__resolve-library-id '{\"libraryName\": \"react\"}'" \
+                '"content"|Tool.*not found"'
+        fi
+    else
+        # Test agent behavior without configuration
+        run_test_expect_failure "Agent requires configuration for list" \
+            "$TMCP_AGENT_CMD list" \
+            "No tools configuration found"
+
+        run_test_expect_failure "Agent requires configuration for call" \
+            "$TMCP_AGENT_CMD call some__tool '{\"param\": \"value\"}'" \
+            "No tools configuration found"
+    fi
+
+    # Test agent help and version work
+    run_test "Agent allows help command" \
+        "$TMCP_AGENT_CMD --help" \
+        "Usage.*tmcp.*Commands.*list.*call"
+
+    run_test "Agent allows version command" \
+        "$TMCP_AGENT_CMD --version" \
+        "terminal-mcp.*v"
+
+    # Test that agent provides appropriate error messages for blocked commands
+    run_test_expect_failure "Agent provides helpful error for unknown commands" \
+        "$TMCP_AGENT_CMD invalid-command" \
+        "Unknown command.*invalid-command.*Available commands.*list.*call"
+}
+
 test_error_conditions() {
     log_info "=== Testing Error Conditions ==="
 
@@ -343,6 +440,7 @@ main() {
     log_info "Starting Terminal MCP Test Suite"
     log_info "Testing against: $CONTEXT7_URL"
     log_info "Using tmcp command: $TMCP_CMD"
+    log_info "Using tmcp-agent command: $TMCP_AGENT_CMD"
 
     # Set up cleanup trap
     trap cleanup_test_env EXIT INT TERM
@@ -354,6 +452,8 @@ main() {
     test_direct_functionality
     log_info "Running configuration functionality tests..."
     test_configuration_functionality
+    log_info "Running agent safety control tests..."
+    test_agent_safety_controls
     log_info "Running error condition tests..."
     test_error_conditions
     log_info "Running help and usage tests..."
