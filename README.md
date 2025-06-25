@@ -243,7 +243,7 @@ Call tools using their generated aliases (format: `server__tool-name`). Only ena
 tmcp call context7__resolve-library-id '{"libraryName": "react"}'
 
 # Call with debug output
-tmcp --debug call ref__ref_search_documentation '{"query": "React hooks"}'
+tmcp --debug call ref__search_documentation '{"query": "React hooks"}'
 ```
 
 ### `direct` - Direct Server Communication
