@@ -55,6 +55,9 @@ echo "Installing to $INSTALL_DIR..."
 sudo mv "terminal-mcp-$PLATFORM" "$INSTALL_DIR/$BINARY_NAME"
 sudo chmod +x "$INSTALL_DIR/$BINARY_NAME"
 
+echo "Creating tmcp alias..."
+sudo ln -sf "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/tmcp"
+
 # Cleanup
 cd /
 rm -rf "$TMP_DIR"

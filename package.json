@@ -5,11 +5,12 @@
   "license": "MIT",
   "scripts": {
     "dev": "bun run src/cli.ts",
-    "build:linux-x64": "bun build ./src/cli.ts --compile --minify --target=bun-linux-x64 --outfile dist/terminal-mcp-linux-x64",
-    "build:linux-arm64": "bun build ./src/cli.ts --compile --minify --target=bun-linux-arm64 --outfile dist/terminal-mcp-linux-arm64",
-    "build:macos-arm64": "bun build ./src/cli.ts --compile --minify --target=bun-darwin-arm64 --outfile dist/terminal-mcp-macos-arm64",
-    "build:macos-x64": "bun build ./src/cli.ts --compile --minify --target=bun-darwin-x64 --outfile dist/terminal-mcp-macos-x64",
+    "build:linux-x64": "bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-linux-x64 --outfile dist/terminal-mcp-linux-x64",
+    "build:linux-arm64": "bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-linux-arm64 --outfile dist/terminal-mcp-linux-arm64",
+    "build:macos-arm64": "bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-arm64 --outfile dist/terminal-mcp-macos-arm64",
+    "build:macos-x64": "bun build ./src/cli.ts --compile --minify --sourcemap --bytecode --target=bun-darwin-x64 --outfile dist/terminal-mcp-macos-x64",
     "build:all": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:macos-arm64 && bun run build:macos-x64",
+    "build:current": "if [ \"$(uname)\" = \"Darwin\" ]; then if [ \"$(uname -m)\" = \"arm64\" ]; then bun run build:macos-arm64; else bun run build:macos-x64; fi; else if [ \"$(uname -m)\" = \"aarch64\" ]; then bun run build:linux-arm64; else bun run build:linux-x64; fi; fi",
     "build": "./scripts/build.sh",
     "clean": "rm -rf dist",
     "release": "./scripts/release.sh",
@@ -21,7 +22,9 @@
     "prerelease:beta": "./scripts/prerelease.sh beta",
     "prerelease:rc": "./scripts/prerelease.sh rc",
     "status": "./scripts/status.sh",
-    "changelog": "./scripts/changelog.sh"
+    "changelog": "./scripts/changelog.sh",
+    "test": "./scripts/test-runner.sh",
+    "test:ci": "./scripts/ci-test.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.1"

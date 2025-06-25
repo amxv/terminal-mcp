@@ -1,16 +1,92 @@
 #!/usr/bin/env bun
 import { parseArgs } from "util";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { initConfig } from "./config";
+import { callToolByAlias, listConfiguredTools, listToolsDirect, callToolDirect } from "./tools";
+
+// Get package version
+function getVersion(): string {
+  try {
+    const packagePath = join(__dirname, "..", "package.json");
+    const packageJson = JSON.parse(readFileSync(packagePath, "utf-8"));
+    return packageJson.version || "unknown";
+  } catch (error) {
+    return "unknown";
+  }
+}
+
+// Display version information
+function showVersion() {
+  const version = getVersion();
+  console.log(`terminal-mcp v${version}`);
+  console.log("CLI tool for interacting with MCP Streamable-HTTP servers");
+  console.log("License: MIT");
+  console.log("Repository: https://github.com/zueai/terminal-mcp");
+}
+
+// Display help information
+function showHelp() {
+  const version = getVersion();
+  console.log(`terminal-mcp (tmcp) v${version}
+
+A minimal command-line MCP client for calling tools from remote MCP servers.
+
+Usage: tmcp [options] <command> [arguments]
+
+Options:
+  -h, --help                          Show this help message
+  -v, --version                       Show version information
+  --debug                             Enable debug logging
+  --configpath <path>                 Specify custom path for mcp.json
+
+Commands:
+  init                                Initialize configuration from mcp.json
+  call <tool-alias> <json-params>     Call a tool using configured alias
+  list                                List all configured tools
+  direct <url> <subcommand>           Direct server communication
+    list                              List tools from the server
+    call <tool-name> <json-params>    Call a specific tool
+
+Setup:
+  1. Create mcp.json in your project root or .cursor/mcp.json
+  2. Run 'tmcp init' to discover and configure tools
+  3. Use 'tmcp call <tool-alias> <json-params>' to call tools
+
+Examples:
+  tmcp init
+  tmcp list
+  tmcp call context7__resolve-library-id '{"libraryName": "react"}'
+  tmcp call context7__get-library-docs '{"context7CompatibleLibraryID": "/facebook/react"}'
+
+  # Using custom config path
+  tmcp --configpath ./custom/mcp.json init
+  tmcp --configpath ./custom/mcp.json call tool-alias <json-args>
+
+  # Direct server communication (no config needed)
+  tmcp direct https://mcp.context7.com/mcp list
+  tmcp direct https://mcp.context7.com/mcp call resolve-library-id '{"libraryName": "react"}'
+
+  tmcp --debug call tool-alias <json-args>
+
+For more information, visit: https://github.com/zueai/terminal-mcp`);
+}
 
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
   options: {
     debug: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
+    version: { type: "boolean", short: "v", default: false },
+    configpath: { type: "string", default: "" },
   },
   allowPositionals: true,
 });
+
 const debug = values.debug as boolean;
+const help = values.help as boolean;
+const version = values.version as boolean;
+const configPath = values.configpath as string;
 
 // Debug logging function
 function debugLog(...args: any[]) {
@@ -19,113 +95,15 @@ function debugLog(...args: any[]) {
   }
 }
 
-/**
- * Create and connect to an MCP client
- */
-async function createClient(endpoint: string): Promise<Client> {
-  debugLog("Creating MCP client for endpoint:", endpoint);
-
-  try {
-    // Create transport
-    const transport = new StreamableHTTPClientTransport(new URL(endpoint));
-
-    // Create client
-    const client = new Client({
-      name: "terminal-mcp",
-      version: "1.0.0"
-    }, {
-      capabilities: {
-        tools: {},
-        resources: {},
-        prompts: {}
-      }
-    });
-
-    // Connect to server
-    await client.connect(transport);
-    debugLog("✅ Successfully connected to MCP server");
-
-    return client;
-  } catch (error) {
-    console.error("❌ Failed to connect to MCP server:", error);
-    throw error;
-  }
+// Handle help and version flags first
+if (help) {
+  showHelp();
+  process.exit(0);
 }
 
-/**
- * List all available tools, resources, and prompts from an MCP server
- */
-async function listCapabilities(endpoint: string) {
-  debugLog("Listing capabilities for endpoint:", endpoint);
-
-  const client = await createClient(endpoint);
-
-  try {
-    const [tools, resources, prompts] = await Promise.all([
-      client.listTools().catch(() => ({ tools: [] })),
-      client.listResources().catch(() => ({ resources: [] })),
-      client.listPrompts().catch(() => ({ prompts: [] }))
-    ]);
-
-    const result = {
-      endpoint,
-      capabilities: {
-        tools: tools.tools || [],
-        resources: resources.resources || [],
-        prompts: prompts.prompts || []
-      }
-    };
-
-    console.log(JSON.stringify(result, null, 2));
-  } finally {
-    // Clean up connection
-    try {
-      // @ts-ignore - accessing private transport property
-      await client._transport?.close?.();
-    } catch (e) {
-      debugLog("Warning: Error during cleanup:", e);
-    }
-  }
-}
-
-/**
- * Call a specific tool on an MCP server
- */
-async function callTool(endpoint: string, toolName: string, params: string) {
-  debugLog("Calling tool:", toolName);
-  debugLog("Endpoint:", endpoint);
-  debugLog("Raw params:", params);
-
-  let parsedParams: Record<string, unknown>;
-  try {
-    parsedParams = JSON.parse(params);
-    debugLog("Parsed params:", JSON.stringify(parsedParams, null, 2));
-  } catch (error) {
-    console.error("❌ Invalid JSON parameters:", error);
-    console.error("Parameters must be valid JSON. Example: '{\"libraryName\": \"react\"}'");
-    throw error;
-  }
-
-  const client = await createClient(endpoint);
-
-  try {
-    debugLog("Making tool call...");
-    const result = await client.callTool({
-      name: toolName,
-      arguments: parsedParams
-    });
-
-    debugLog("✅ Tool call successful");
-    console.log(JSON.stringify(result, null, 2));
-  } finally {
-    // Clean up connection
-    try {
-      // @ts-ignore - accessing private transport property
-      await client._transport?.close?.();
-    } catch (e) {
-      debugLog("Warning: Error during cleanup:", e);
-    }
-  }
+if (version) {
+  showVersion();
+  process.exit(0);
 }
 
 // CLI entry point
@@ -136,57 +114,86 @@ async function callTool(endpoint: string, toolName: string, params: string) {
   debugLog("Command:", command);
   debugLog("Arguments:", args);
   debugLog("Debug mode:", debug);
+  debugLog("Config path:", configPath || "default");
 
   try {
     switch (command) {
-      case "list": {
-        const endpoint = args[0];
-        if (!endpoint) {
-          console.error("❌ Endpoint URL is required");
-          console.error("Usage: terminal-mcp list <endpoint-url>");
-          process.exit(1);
-        }
-        await listCapabilities(endpoint);
+      case "init": {
+        await initConfig(debugLog, configPath);
         break;
       }
 
       case "call": {
-        const endpoint = args[0];
-        const toolName = args[1];
-        const params = args[2];
-
-        if (!endpoint || !toolName || !params) {
-          console.error("❌ Missing required arguments");
-          console.error("Usage: terminal-mcp call <endpoint-url> <tool-name> <json-params>");
-          console.error("Example: terminal-mcp call https://mcp.context7.com/mcp resolve-library-id '{\"libraryName\": \"react\"}'");
+        if (args.length !== 2) {
+          console.error("❌ Invalid arguments for call command");
+          console.error("Usage: tmcp call <tool-alias> <json-params>");
           process.exit(1);
         }
-
-        await callTool(endpoint, toolName, params);
+        const [toolAlias, params] = args;
+        await callToolByAlias(toolAlias, params, debugLog, configPath);
         break;
       }
 
-      default:
-        console.log(`terminal-mcp
-
-Usage: terminal-mcp <command> [options]
-
-Commands:
-  list <endpoint-url>                           List all available tools, resources, and prompts
-  call <endpoint-url> <tool-name> <json-params> Call a specific tool with JSON parameters
-
-Options:
-  --debug                                       Enable debug logging
-
-Examples:
-  terminal-mcp list https://mcp.context7.com/mcp
-  terminal-mcp call https://mcp.context7.com/mcp resolve-library-id '{"libraryName": "react"}'
-  terminal-mcp call https://mcp.context7.com/mcp get-library-docs '{"context7CompatibleLibraryID": "/facebook/react"}'
-  terminal-mcp --debug list https://mcp.context7.com/mcp
-`);
-        if (command && command !== "help") {
-          console.error(`❌ Unknown command: ${command}`);
+      case "list": {
+        if (args.length > 0) {
+          console.error("❌ List command does not accept arguments");
+          console.error("Usage: tmcp list");
+          console.error("This will list all configured tools from your terminal-mcp configuration.");
           process.exit(1);
+        }
+        await listConfiguredTools(debugLog, configPath);
+        break;
+      }
+
+      case "direct": {
+        if (args.length < 2) {
+          console.error("❌ Invalid arguments for direct command");
+          console.error("Usage: tmcp direct <url> <subcommand>");
+          console.error("Subcommands:");
+          console.error("  list                           List tools from the server");
+          console.error("  call <tool-name> <json-params> Call a specific tool");
+          process.exit(1);
+        }
+
+        const [url, subcommand, ...subArgs] = args;
+
+        switch (subcommand) {
+          case "list": {
+            await listToolsDirect(url, debugLog);
+            break;
+          }
+
+          case "call": {
+            if (subArgs.length !== 2) {
+              console.error("❌ Invalid arguments for direct call");
+              console.error("Usage: tmcp direct <url> call <tool-name> <json-params>");
+              process.exit(1);
+            }
+            const [toolName, params] = subArgs;
+            await callToolDirect(url, toolName, params, debugLog);
+            break;
+          }
+
+          default: {
+            console.error(`❌ Unknown direct subcommand: ${subcommand}`);
+            console.error("Available subcommands: list, call");
+            process.exit(1);
+          }
+        }
+        break;
+      }
+
+      case "help":
+        showHelp();
+        break;
+
+      default:
+        if (command) {
+          console.error(`❌ Unknown command: ${command}`);
+          console.error("Use 'tmcp --help' for usage information.");
+          process.exit(1);
+        } else {
+          showHelp();
         }
     }
   } catch (error) {

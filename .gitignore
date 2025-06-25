@@ -69,3 +69,7 @@ temp/
 # Backup files
 *.bak
 *.backup
+
+terminal-mcp/
+mcp.json
+.cursor/mcp.json

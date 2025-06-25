@@ -2,144 +2,193 @@
 
 A minimal command-line MCP client that makes it easy to call tools from remote (Streamable HTTP) MCP servers using terminal commands. This project was created to add MCP support for coding agents like OpenAI's Codex.
 
+The CLI supports both configuration-based usage for project workflows and direct server communication for testing and one-off interactions.
+
 ## Features
 
 - 🚀 **Zero Dependencies**: Standalone executables that don't require Node.js, Bun, or any other runtime to be installed
 - 🌐 **Cross-Platform**: Works on macOS (Intel & Apple Silicon), Linux (x64 & ARM64)
 - 📡 **Streaming Support**: Handles both JSON and Server-Sent Events responses
 - ⚡ **Fast Startup**: Launches in under 100ms
+- 🔧 **Configuration-Based**: Support for `mcp.json` configuration files with tool aliases
+- 🔐 **Authentication**: Support for custom headers and environment variables
+- 🛠️ **Tool Discovery**: Automatic aggregation of tools from multiple MCP servers
+- 🎯 **Direct Communication**: Connect to any MCP server without configuration
 
-## Installation
+## Quick Start
 
-### Quick Install (Recommended)
+**Step 1: Run the auto-install script**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zueai/terminal-mcp/main/install.sh | bash
 ```
 
-### Manual Installation
+For detailed manual installation instructions, see: [Manual Installation Guide](docs/MANUAL_INSTALLATION.md)
 
-1. Download the appropriate binary for your platform from the [releases page](https://github.com/zueai/terminal-mcp/releases)
-2. Extract the archive: `tar -xzf terminal-mcp-*.tar.gz`
-3. Move to your PATH: `sudo mv terminal-mcp-* /usr/local/bin/terminal-mcp`
-4. Make executable: `sudo chmod +x /usr/local/bin/terminal-mcp`
+**Step 2: Create MCP Config File**
 
-### Available Platforms
+If you already have a `./.cursor/mcp.json` or `./mcp.json` you can skip this step.
 
-- `terminal-mcp-macos-arm64.tar.gz` - macOS Apple Silicon (M1/M2/M3)
-- `terminal-mcp-macos-x64.tar.gz` - macOS Intel
-- `terminal-mcp-linux-x64.tar.gz` - Linux x64
-- `terminal-mcp-linux-arm64.tar.gz` - Linux ARM64
-
-## Usage
-
-### Basic Commands
-
-```bash
-# List available tools from the server
-terminal-mcp list <endpoint-url>
-
-# Call a specific tool
-terminal-mcp call <endpoint-url> <tool-name> <json-params>
-```
-
-### Examples
-
-```bash
-# List capabilities from a local MCP server
-terminal-mcp list http://localhost:8123/mcp
-
-# Call a tool with JSON parameters
-terminal-mcp call http://localhost:8123/mcp search-files '{"pattern": "*.ts"}'
-
-# Call Context7 MCP server tools
-terminal-mcp list https://mcp.context7.com/mcp
-terminal-mcp call https://mcp.context7.com/mcp resolve-library-id '{"libraryName": "react"}'
-terminal-mcp call https://mcp.context7.com/mcp get-library-docs '{"context7CompatibleLibraryID": "/facebook/react"}'
-```
-
-## Development
-
-### Prerequisites
-
-- [Bun](https://bun.sh) installed on your system
-
-### Setup
-
-```bash
-git clone https://github.com/zueai/terminal-mcp.git
-cd terminal-mcp
-bun install
-```
-
-### Development Commands
-
-```bash
-# Run in development mode
-bun run dev
-
-# Build for all platforms
-bun run build
-
-# Build for specific platform
-bun run build:macos-arm64
-bun run build:linux-x64
-
-# Clean build artifacts
-bun run clean
-```
-
-### Testing Against Reference Server
-
-You can test against the reference MCP server:
-
-```bash
-git clone https://github.com/invariantlabs-ai/mcp-streamable-http
-cd mcp-streamable-http/typescript-example/server
-bun install && bun run build && bun run start
-```
-
-Then in another terminal:
-```bash
-terminal-mcp list http://localhost:8123/mcp
-```
-
-## How It Works
-
-This CLI tool implements the MCP Streamable-HTTP protocol:
-
-1. **JSON-RPC 2.0**: Each command sends a JSON-RPC request to the server
-2. **Dual Response Modes**: Servers can respond with either:
-   - `application/json` for immediate responses
-   - `text/event-stream` for streaming responses via Server-Sent Events
-3. **Standalone Execution**: The binary includes the Bun runtime and all dependencies
-
-## Protocol Details
-
-The tool sends HTTP POST requests with JSON-RPC 2.0 payloads:
-
+Create an MCP configuration file at `./terminal-mcp/servers.json` with your MCP servers in the following format:
 ```json
 {
-  "jsonrpc": "2.0",
-  "id": "unique-request-id",
-  "method": "listTools",
-  "params": {}
+  "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "ref": {
+      "url": "http://api.ref.tools/mcp",
+      "headers": {
+        "x-ref-api-key": "your-api-key"
+      }
+    }
+  }
 }
 ```
 
-Servers respond with either:
-- Immediate JSON response
-- Streaming SSE events with `data:` prefixed JSON payloads
+### Supported Options
+
+- **`url` or `serverUrl`**: The MCP server endpoint (both keys supported)
+- **`headers`**: Custom HTTP headers to send with requests
+- **`env`**: Environment variables to set before connecting (OAuth is currently not supported)
+
+**Step 3: Initialize**
+
+Run `tmcp init` to discover tools from your configured servers:
+```bash
+tmcp init
+```
+
+**Step 4: Start Using Tools**
+
+List available tools and call them:
+```bash
+# See all available tools
+tmcp list
+
+# Call tools using server__tool-name format
+tmcp call context7__resolve-library-id '{"libraryName": "react"}'
+```
+
+## Usage
+
+### Command Line Options
+
+The CLI supports several options that can be used with any command:
+
+- **`-h, --help`**: Show help information and usage examples
+- **`-v, --version`**: Display version information
+- **`--debug`**: Enable detailed debug logging
+- **`--configpath <path>`**: Specify a custom path for the MCP configuration file
+
+Examples:
+```bash
+# Show help
+tmcp --help
+tmcp -h
+
+# Show version
+tmcp --version
+tmcp -v
+
+# Use custom config file
+tmcp --configpath ./custom/mcp.json init
+tmcp --configpath /path/to/config.json list
+
+# Enable debug mode
+tmcp --debug call tool-alias '{"param": "value"}'
+```
+
+
+## Commands
+
+### `init` - Initialize Configuration
+
+Discovers tools from your configured MCP servers and generates aliases.
+
+```bash
+# Use configuration from .cursor/mcp.json or mcp.json
+tmcp init
+
+# Use custom configuration file
+tmcp --configpath /path/to/config.json init
+```
+
+**Generated Files:**
+
+After running `tmcp init`, the following files are created in `./terminal-mcp/`:
+
+- **`servers.json`**: Copy of your MCP server configuration
+- **`tools.json`**: Aggregated tool information with schemas and examples
+
+Example `tools.json` structure:
+```json
+{
+  "mcpTools": {
+    "context7__resolve-library-id": {
+      "example_terminal_command": "tmcp call context7__resolve-library-id '<json-string-args>'",
+      "enabled": true,
+      "description": "Resolves a package/product name to a Context7-compatible library ID",
+      "json_tool_schema": {
+        "type": "object",
+        "properties": {
+          "libraryName": {
+            "type": "string",
+            "description": "Library name to search for"
+          }
+        },
+        "required": ["libraryName"]
+      }
+    }
+  }
+}
+```
+
+### `list` - Show Available Tools
+
+Displays all configured tools with their schemas and example usage.
+
+```bash
+# List all tools from configured servers
+tmcp list
+
+# List with custom config
+tmcp --configpath ./config/mcp.json list
+```
+
+### `call` - Execute Tools
+
+Call tools using their generated aliases (format: `server__tool-name`).
+
+```bash
+# Call a tool with JSON parameters
+tmcp call context7__resolve-library-id '{"libraryName": "react"}'
+
+# Call with debug output
+tmcp --debug call ref__search-documentation '{"query": "React hooks"}'
+```
+
+### `direct` - Direct Server Communication
+
+Communicate with MCP servers directly without configuration files.
+
+```bash
+# List tools from any server
+tmcp direct https://mcp.context7.com/mcp list
+
+# Call tools directly using original names
+tmcp direct https://mcp.context7.com/mcp call resolve-library-id '{"libraryName": "react"}'
+```
+
+For detailed examples and advanced usage, see: [Direct Communication Guide](docs/DIRECT_COMMUNICATION.md)
+
+## Documentation
+
+- 📖 [Development Guide](docs/DEVELOPMENT.md) - Setup, development commands, and contributing guidelines
+- 🔧 [Manual Installation](docs/MANUAL_INSTALLATION.md) - Detailed installation instructions for all platforms
+- 🌐 [Direct Communication](docs/DIRECT_COMMUNICATION.md) - Using MCP servers without configuration files
 
 ## License
 
 MIT
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
