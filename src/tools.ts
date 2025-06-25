@@ -1,4 +1,4 @@
-import { loadToolsConfig, loadMcpConfig, findMcpConfig, AvailableToolsConfig } from "./config";
+import { loadToolsConfig, loadMcpConfig, findMcpConfig, ToolsConfig } from "./config";
 import { createClient, createClientFromUrl } from "./client";
 
 /**
@@ -15,6 +15,7 @@ export async function listConfiguredTools(debugLog: (message: string, ...args: a
   }
 
   const tools = Object.entries(toolsConfig.mcpTools)
+    .filter(([_, toolInfo]) => toolInfo.enabled)
     .map(([alias, toolInfo]) => ({
       alias,
       description: toolInfo.description,
@@ -47,15 +48,41 @@ export async function listToolsDirect(endpoint: string, debugLog: (message: stri
     const toolsResponse = await client.listTools();
     const tools = toolsResponse.tools || [];
 
-    // Note: Since allowed-tools.json only contains enabled tools, no filtering needed
+    // Check if we have tools configuration to filter disabled tools
+    const toolsConfig = loadToolsConfig();
+    let filteredTools = tools;
+
+    if (toolsConfig) {
+      debugLog("Tools configuration found, filtering by enabled status");
+      filteredTools = tools.filter(tool => {
+        // Try to find this tool in our configuration
+        for (const [alias, toolInfo] of Object.entries(toolsConfig.mcpTools)) {
+          const aliasMatches = alias === tool.name || alias.endsWith(`__${tool.name}`);
+          if (aliasMatches) {
+            debugLog(`Found ${tool.name} in config as ${alias}, enabled: ${toolInfo.enabled}`);
+            return toolInfo.enabled;
+          }
+        }
+        // If not found in config, allow it (for tools not yet discovered)
+        debugLog(`Tool ${tool.name} not found in config, allowing`);
+        return true;
+      });
+    } else {
+      debugLog("No tools configuration found, showing all tools");
+    }
+
     const result = {
       endpoint,
-      tools: tools.map(tool => ({
+      tools: filteredTools.map(tool => ({
         name: tool.name,
         description: tool.description || "No description available",
         schema: tool.inputSchema || { type: "object", properties: {} }
       })),
-      total_count: tools.length
+      total_count: filteredTools.length,
+      ...(toolsConfig && {
+        note: "Tools filtered by configuration. Disabled tools are hidden.",
+        total_available: tools.length
+      })
     };
 
     console.log(JSON.stringify(result, null, 2));
@@ -78,8 +105,37 @@ export async function callToolDirect(endpoint: string, toolName: string, params:
   debugLog("Endpoint:", endpoint);
   debugLog("Raw params:", params);
 
-  // Note: Direct calls bypass configuration filtering since they're ad-hoc
-  debugLog("Direct call - bypassing configuration checks");
+  // Check if we have tools configuration and if this tool is disabled
+  const toolsConfig = loadToolsConfig();
+  if (toolsConfig) {
+    // Try to find the tool in our configuration using various alias patterns
+    let foundToolInfo: any = null;
+    let foundAlias: string | null = null;
+
+    // Look for exact tool name match or server__toolname pattern
+    for (const [alias, toolInfo] of Object.entries(toolsConfig.mcpTools)) {
+      // Check if this alias matches the endpoint and tool name
+      const aliasMatches = alias === toolName || alias.endsWith(`__${toolName}`);
+      if (aliasMatches) {
+        foundToolInfo = toolInfo;
+        foundAlias = alias;
+        break;
+      }
+    }
+
+    if (foundToolInfo) {
+      debugLog(`Found tool in configuration: ${foundAlias}`);
+      if (!foundToolInfo.enabled) {
+        console.error(`❌ Tool '${toolName}' is disabled in configuration.`);
+        console.error("Enable it in tools.json or use a different tool.");
+        process.exit(1);
+      }
+    } else {
+      debugLog(`Tool '${toolName}' not found in configuration, allowing direct call`);
+    }
+  } else {
+    debugLog("No tools configuration found, allowing direct call");
+  }
 
   let parsedParams: Record<string, unknown>;
   try {
@@ -133,12 +189,17 @@ export async function callToolByAlias(toolAlias: string, params: string, debugLo
     console.error(`❌ Tool '${toolAlias}' not found.`);
     console.error("Available tools:");
     Object.keys(toolsConfig.mcpTools).forEach(alias => {
-      console.error(`  ${alias}`);
+      if (toolsConfig.mcpTools[alias].enabled) {
+        console.error(`  ${alias}`);
+      }
     });
     process.exit(1);
   }
 
-  // Note: No need to check enabled status since allowed-tools.json only contains enabled tools
+  if (!toolInfo.enabled) {
+    console.error(`❌ Tool '${toolAlias}' is disabled.`);
+    process.exit(1);
+  }
 
   // Parse parameters
   let parsedParams: Record<string, unknown>;

@@ -2,7 +2,7 @@
 import { parseArgs } from "util";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { initConfig, discoverConfig } from "./config";
+import { initConfig } from "./config";
 import { callToolByAlias, listConfiguredTools, listToolsDirect, callToolDirect } from "./tools";
 
 // Get package version
@@ -41,8 +41,7 @@ Options:
   --configpath <path>                 Specify custom path for mcp.json
 
 Commands:
-  discover                            Discover tools from MCP servers and create all-tools.json
-  init                                Create allowed-tools.json from all-tools.json (run after discover)
+  init                                Initialize configuration from mcp.json
   call <tool-alias> <json-params>     Call a tool using configured alias
   list                                List all configured tools
   direct <url> <subcommand>           Direct server communication
@@ -51,20 +50,16 @@ Commands:
 
 Setup:
   1. Create mcp.json in your project root or .cursor/mcp.json
-  2. Run 'tmcp discover' to discover all available tools and create all-tools.json
-  3. Edit all-tools.json to disable any unwanted tools (set enabled: false)
-  4. Run 'tmcp init' to create allowed-tools.json with only enabled tools
-  5. Use 'tmcp call <tool-alias> <json-params>' to call tools
+  2. Run 'tmcp init' to discover and configure tools
+  3. Use 'tmcp call <tool-alias> <json-params>' to call tools
 
 Examples:
-  tmcp discover
   tmcp init
   tmcp list
   tmcp call context7__resolve-library-id '{"libraryName": "react"}'
   tmcp call context7__get-library-docs '{"context7CompatibleLibraryID": "/facebook/react"}'
 
   # Using custom config path
-  tmcp --configpath ./custom/mcp.json discover
   tmcp --configpath ./custom/mcp.json init
   tmcp --configpath ./custom/mcp.json call tool-alias <json-args>
 
@@ -123,11 +118,6 @@ if (version) {
 
   try {
     switch (command) {
-      case "discover": {
-        await discoverConfig(debugLog, configPath);
-        break;
-      }
-
       case "init": {
         await initConfig(debugLog, configPath);
         break;

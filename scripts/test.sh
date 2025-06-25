@@ -205,32 +205,17 @@ test_configuration_functionality() {
 }
 EOF
 
-    # Test discover command
-    run_test "Discover tools from servers" \
-        "$TMCP_CMD discover" \
-        "Discovery complete|Generated all-tools configuration"
-
-    # Verify all-tools.json was created
-    if [[ -f "terminal-mcp/servers.json" && -f "terminal-mcp/all-tools.json" ]]; then
-        log_success "Discovery files created"
-        ((TESTS_PASSED++))
-    else
-        log_error "Discovery files not created"
-        ((TESTS_FAILED++))
-    fi
-    ((TESTS_RUN++))
-
-    # Test init command (filter enabled tools)
-    run_test "Initialize available tools configuration" \
+    # Test init command (discovers and creates tools.json)
+    run_test "Initialize tools configuration" \
         "$TMCP_CMD init" \
-        "Initialization complete|Generated allowed-tools configuration"
+        "Initialization complete|Generated tools configuration"
 
-    # Verify allowed-tools.json was created
-    if [[ -f "terminal-mcp/allowed-tools.json" ]]; then
-        log_success "Available tools configuration created"
+    # Verify tools.json was created
+    if [[ -f "terminal-mcp/servers.json" && -f "terminal-mcp/tools.json" ]]; then
+        log_success "Tools configuration files created"
         ((TESTS_PASSED++))
     else
-        log_error "Available tools configuration not created"
+        log_error "Tools configuration files not created"
         ((TESTS_FAILED++))
     fi
     ((TESTS_RUN++))
@@ -264,6 +249,34 @@ EOF
     run_test_expect_failure "Call with invalid JSON" \
         "$TMCP_CMD call context7__resolve-library-id 'invalid-json'" \
         "Invalid JSON|JSON"
+
+    # Test disabling a tool by editing tools.json
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        # Backup original tools.json
+        cp "terminal-mcp/tools.json" "terminal-mcp/tools.json.backup"
+
+        # Disable the first tool
+        jq '.mcpTools[keys[0]].enabled = false' "terminal-mcp/tools.json" > "terminal-mcp/tools.json.tmp" && mv "terminal-mcp/tools.json.tmp" "terminal-mcp/tools.json"
+
+        # Test that disabled tool is not listed
+        run_test "List tools excludes disabled" \
+            "$TMCP_CMD list" \
+            '"configured_tools".*"total_count"'
+
+        # Get the disabled tool name
+        local disabled_tool
+        disabled_tool=$(jq -r '.mcpTools | to_entries[] | select(.value.enabled == false) | .key' "terminal-mcp/tools.json.backup" | head -1)
+
+        if [[ -n "$disabled_tool" && "$disabled_tool" != "null" ]]; then
+            # Test that calling disabled tool fails
+            run_test_expect_failure "Call disabled tool fails" \
+                "$TMCP_CMD call $disabled_tool '{\"libraryName\": \"react\"}'" \
+                "Tool.*disabled|disabled"
+        fi
+
+        # Restore original tools.json
+        mv "terminal-mcp/tools.json.backup" "terminal-mcp/tools.json"
+    fi
 }
 
 test_error_conditions() {
@@ -282,13 +295,9 @@ test_error_conditions() {
         "$TMCP_CMD call some__tool '{\"param\": \"value\"}'" \
         "No tools configuration found|Run.*tmcp init"
 
-    run_test_expect_failure "Discover without mcp.json" \
-        "$TMCP_CMD discover" \
-        "No mcp.json configuration file found"
-
-    run_test_expect_failure "Init without all-tools.json" \
+    run_test_expect_failure "Init without mcp.json" \
         "$TMCP_CMD init" \
-        "No all-tools.json found|Run.*tmcp discover"
+        "No mcp.json configuration file found"
 
     cd "$TEST_DIR"
     rm -rf "$clean_dir"

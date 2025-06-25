@@ -1,0 +1,5 @@
+[ ] revert to simple `tools.json` from v0.40.0, disabled tools can be easily hidden when agent runs `tmcp list`, this makes the entire CLI simple to use and manage. Just one `tools.json` where user can disable tools, which just works because `list` should filter out disabled tools from `tools.json`
+[ ] Support local stdio servers (including local stdio proxies like `mcp-remote`)
+[ ] Support remote SSE servers
+[ ] Verify that custom headers, env variables are working for authed servers
+[ ] Add `codex` command that provides a guided flow to setting up terminal-mcp for Codex usage, also provide helper commands to print currently allowed tools and instructions draft to be added to `AGENTS.md` that Codex uses to understand how to use terminal-mcp.

@@ -1,0 +1,94 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Terminal MCP Project Instructions
+
+## What This Project Does
+
+**terminal-mcp** is a standalone CLI tool (`tmcp`) that bridges AI coding agents with MCP (Model Context Protocol) servers via simple terminal commands.
+
+**Core Purpose:** Enable AI agents (like OpenAI Codex) to access external tools and APIs through MCP servers without requiring native MCP support.
+
+## How It Works
+
+1. **MCP Servers** host tools (APIs, documentation search, code analysis, etc.)
+2. **terminal-mcp** connects to these servers and exposes their tools via CLI
+3. **AI Agents** call tools using simple terminal commands: `tmcp call tool-name '{"param": "value"}'`
+
+## Key Components
+
+- **`tmcp discover`**: Finds all available tools from configured MCP servers
+- **`tmcp init`**: Creates final tool list with only enabled tools
+- **`tmcp call`**: Executes tools using `server__tool-name` aliases
+- **`tmcp direct`**: Bypasses configuration for one-off server communication
+
+## Quick Setup Flow
+
+```bash
+# 1. Install
+curl -fsSL https://raw.githubusercontent.com/zueai/terminal-mcp/main/install.sh | bash
+
+# 2. Configure (create mcp.json with server URLs)
+# 3. Discover tools
+tmcp discover
+
+# 4. Edit all-tools.json to disable unwanted tools
+# 5. Initialize
+tmcp init
+
+# 6. Use tools
+tmcp call context7__resolve-library-id '{"libraryName": "react"}'
+```
+
+## Built With
+
+- **Bun** runtime (compiled to standalone binary)
+- **@modelcontextprotocol/sdk** for MCP communication
+- **Zero dependencies** in final binary
+
+---
+
+## Development Workflow
+
+### After Every Task Completion
+
+**1. Check README Updates**
+```bash
+# Review if README.md needs updates based on changes made
+# Update README.md if:
+# - New features were added
+# - Commands changed
+# - Installation process changed
+# - Examples need updating
+# - Documentation links changed
+```
+
+**2. Run Full Test Suite**
+```bash
+# Always run comprehensive tests after task completion
+bun run test
+
+# If tests fail, investigate and fix before considering task complete
+# Test suite covers:
+# - Direct server communication
+# - Configuration-based usage
+# - Error handling
+# - Help/usage commands
+```
+
+### Test Commands Available
+
+- `bun run test` - Full comprehensive test suite (~10-15 seconds)
+- `bun run test:ci` - Quick regression tests (~5 seconds)
+- Manual testing: `./dist/terminal-mcp-* direct https://mcp.context7.com/mcp list`
+
+### Development Commands
+
+- `bun run dev` - Run in development mode
+- `bun run build` - Build for current platform
+- `bun run build:all` - Build for all platforms
+- `bun run clean` - Clean build artifacts
+
+**Remember:** Every task completion = README check + full test run ✅

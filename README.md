@@ -54,14 +54,14 @@ Create an MCP configuration file at `./terminal-mcp/servers.json` with your MCP 
 - **`headers`**: Custom HTTP headers to send with requests
 - **`env`**: Environment variables to set before connecting (OAuth is currently not supported)
 
-### Step 3: Discover Tools
+### Step 3: Initialize and Discover Tools
 
-Run `tmcp discover` to generate a combined list of tools from all configured servers in `all-tools.json`:
+Run `tmcp init` to discover tools from all configured servers and create the `tools.json` file:
 ```bash
-tmcp discover
+tmcp init
 ```
 
-This will create a `terminal-mcp/all-tools.json` file with the following structure:
+This will create a `terminal-mcp/tools.json` file with the following structure:
 ```json
 {
   "mcpTools": {
@@ -77,34 +77,13 @@ This will create a `terminal-mcp/all-tools.json` file with the following structu
 
 ### Step 4: Disable Tools (Optional)
 
-Edit the generated `./terminal-mcp/all-tools.json` file to disable any tools you don't want available to AI agents by setting `enabled: false`.
+Edit the generated `./terminal-mcp/tools.json` file to disable any tools you don't want available to AI agents by setting `enabled: false`.
 
-### Step 5: Initialize
-
-Run `tmcp init` to create `allowed-tools.json` file with only enabled tools:
-```bash
-tmcp init
-```
-
-
-This will create a `terminal-mcp/allowed-tools.json` file with the following structure:
-```json
-{
-  "mcpTools": {
-    "context7__resolve-library-id": {
-      "example_terminal_command": "tmcp call context7__resolve-library-id '<json-string-args>'",
-      "description": "Finds the Context7 library ID for a package",
-      "parameters": { ... }
-    }
-  }
-}
-```
-
-### Step 6: Start Using Tools
+### Step 5: Start Using Tools
 
 List available tools and call them:
 ```bash
-# See all available tools
+# See all available tools (only shows enabled tools)
 tmcp list
 
 # Call tools using server__tool-name format
@@ -135,7 +114,6 @@ tmcp --version
 tmcp -v
 
 # Use custom config file
-tmcp --configpath ./custom/mcp.json discover
 tmcp --configpath ./custom/mcp.json init
 tmcp --configpath /path/to/config.json list
 
@@ -147,25 +125,12 @@ tmcp --debug call tool-alias '{"param": "value"}'
 
 ## Commands
 
-### `discover` - Discover Available Tools
+### `init` - Initialize Configuration
 
-Discovers tools from your configured MCP servers and generates all-tools.json with all available tools.
+Discovers tools from your configured MCP servers and generates tools.json with all available tools.
 
 ```bash
 # Use configuration from .cursor/mcp.json or mcp.json
-tmcp discover
-
-# Use custom configuration file
-tmcp --configpath /path/to/config.json discover
-```
-
-
-### `init` - Create Available Tools Configuration
-
-Creates allowed-tools.json from all-tools.json, including only tools marked as enabled.
-
-```bash
-# Create allowed-tools.json from existing all-tools.json
 tmcp init
 
 # Use custom configuration file
@@ -174,10 +139,10 @@ tmcp --configpath /path/to/config.json init
 
 ### `list` - Show Available Tools
 
-Displays all configured tools with their schemas and example usage.
+Displays all enabled tools with their schemas and example usage. Disabled tools are automatically filtered out.
 
 ```bash
-# List all tools from configured servers
+# List all enabled tools from configured servers
 tmcp list
 
 # List with custom config
@@ -186,7 +151,7 @@ tmcp --configpath ./config/mcp.json list
 
 ### `call` - Execute Tools
 
-Call tools using their generated aliases (format: `server__tool-name`).
+Call tools using their generated aliases (format: `server__tool-name`). Only enabled tools can be called.
 
 ```bash
 # Call a tool with JSON parameters
@@ -218,17 +183,16 @@ OpenAI Codex Cloud SWE Agent can use terminal-mcp to access MCP tools. Here's ho
 
 ### 1. Configure Your Tools (One-Time Setup)
 
-Follow the Quick Start guide steps 1-5 to decide which tools to make available to Codex:
+Follow the Quick Start guide steps 1-4 to decide which tools to make available to Codex:
 
 1. Install terminal-mcp using the auto-install script
 2. Create your MCP configuration file (`servers.json`)
-3. Run `tmcp discover` to find all available tools
-4. Edit `all-tools.json` to disable any tools you don't want Codex to use
-5. Run `tmcp init` to generate the final `allowed-tools.json`
+3. Run `tmcp init` to discover all available tools and create `tools.json`
+4. Edit `tools.json` to disable any tools you don't want Codex to use (set `enabled: false`)
 
 ### 2. Commit Configuration to Version Control
 
-Once you have your `allowed-tools.json` configured, commit the entire `terminal-mcp/` folder to your repository:
+Once you have your `tools.json` configured, commit the entire `terminal-mcp/` folder to your repository:
 
 ```bash
 git add terminal-mcp/
@@ -280,6 +244,7 @@ tmcp call context7__resolve-library-id '{"libraryName": "express"}'
 - Parameters must be valid JSON strings
 - Use single quotes around the JSON parameter string
 - Check `tmcp list` output for exact parameter names and types for each tool
+- Only enabled tools will be shown in `tmcp list` output
 ````
 
 That's it! Codex will now be able to use the MCP tools you've configured whenever it needs to access external APIs, search documentation, or perform specialized tasks.
