@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-REPO="your-username/terminal-mcp"  # Update this with your GitHub repo
+REPO="zueai/terminal-mcp"  # Update this with your GitHub repo
 VERSION="latest"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="terminal-mcp"
