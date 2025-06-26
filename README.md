@@ -15,6 +15,7 @@ Supports both local (via stdio) and remote (via streamable HTTP) MCP servers.
 - 🔐 **Authentication**: Support for custom headers and environment variables
 - 🎯 **Direct Tool Calls**: Connect to any MCP server without configuration
 - 📦 **Agent-Safe Binary**: Zero risk of config changes or bypassing security controls because your agent literally gets a different binary that only allows listing and calling pre-configured tools.
+- 🛡️ **Optimized for Codex**: Automatically formats all output to ensure no line exceeds 1550 bytes, preventing crashes in OpenAI Codex Cloud Shell environments that have a 1600 byte line limit. JSON responses are intelligently broken at word boundaries while preserving structure validity.
 
 ---
 
