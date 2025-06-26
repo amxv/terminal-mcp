@@ -136,5 +136,5 @@ bun run test
 
 ### Releases
 
-If I tell you to release a "new minor" or a "new patch", here's what you should do. You should commit all the changes that are currently made, push it to main, and then you should run `./release.sh minor` or `./release.sh patch`. This command will do everything to correctly release the new version using GitHub Actions.
+If I tell you to release a "new minor" or a "new patch", here's what you should do: commit all the changes that are currently made, push it to main, and then  run `./scripts/release.sh minor -y` or `./scripts/release.sh patch -y`. This command will do everything to correctly release the new version using GitHub Actions.
 

@@ -49,20 +49,35 @@ if [[ "$CURRENT_BRANCH" != "main" && "$CURRENT_BRANCH" != "master" ]]; then
     fi
 fi
 
+# Parse arguments
+RELEASE_TYPE="patch"
+AUTO_YES=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -y|--yes)
+            AUTO_YES=true
+            shift
+            ;;
+        major|minor|patch)
+            RELEASE_TYPE=$1
+            shift
+            ;;
+        *)
+            print_error "Unknown argument: $1"
+            echo "Usage: $0 [major|minor|patch] [-y|--yes]"
+            echo "  major: 1.0.0 -> 2.0.0"
+            echo "  minor: 1.0.0 -> 1.1.0"
+            echo "  patch: 1.0.0 -> 1.0.1 (default)"
+            echo "  -y, --yes: Skip interactive prompts"
+            exit 1
+            ;;
+    esac
+done
+
 # Get current version from package.json
 CURRENT_VERSION=$(node -p "require('./package.json').version")
 print_status "Current version: $CURRENT_VERSION"
-
-# Determine release type
-RELEASE_TYPE=${1:-patch}
-if [[ ! "$RELEASE_TYPE" =~ ^(major|minor|patch)$ ]]; then
-    print_error "Invalid release type: $RELEASE_TYPE"
-    echo "Usage: $0 [major|minor|patch]"
-    echo "  major: 1.0.0 -> 2.0.0"
-    echo "  minor: 1.0.0 -> 1.1.0"
-    echo "  patch: 1.0.0 -> 1.0.1 (default)"
-    exit 1
-fi
 
 print_status "Release type: $RELEASE_TYPE"
 
@@ -91,18 +106,22 @@ NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 print_status "New version: $NEW_VERSION"
 
 # Confirm release
-echo
-print_warning "This will:"
-echo "  1. Update package.json version to $NEW_VERSION"
-echo "  2. Create a git commit with the version bump"
-echo "  3. Create and push a git tag v$NEW_VERSION"
-echo "  4. Trigger GitHub Actions to build and create a release"
-echo
-read -p "Continue? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    print_error "Aborted"
-    exit 1
+if [[ "$AUTO_YES" != true ]]; then
+    echo
+    print_warning "This will:"
+    echo "  1. Update package.json version to $NEW_VERSION"
+    echo "  2. Create a git commit with the version bump"
+    echo "  3. Create and push a git tag v$NEW_VERSION"
+    echo "  4. Trigger GitHub Actions to build and create a release"
+    echo
+    read -p "Continue? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_error "Aborted"
+        exit 1
+    fi
+else
+    print_status "Auto-yes mode: Skipping confirmation prompt"
 fi
 
 print_status "Starting release process..."
