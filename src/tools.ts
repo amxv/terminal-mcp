@@ -1,5 +1,6 @@
 import { loadToolsConfig, loadMcpConfig, findMcpConfig, ToolsConfig } from "./config";
 import { createClient, createClientFromUrl } from "./client";
+import { safeConsoleLog } from "./cli-common";
 
 /**
  * List all configured tools from the tools configuration
@@ -33,7 +34,7 @@ export async function listConfiguredTools(debugLog: (message: string, ...args: a
     total_count: tools.length
   };
 
-  console.log(JSON.stringify(result, null, 2));
+  safeConsoleLog(result);
 }
 
 /**
@@ -85,7 +86,7 @@ export async function listToolsDirect(endpoint: string, debugLog: (message: stri
       })
     };
 
-    console.log(JSON.stringify(result, null, 2));
+    safeConsoleLog(result);
   } finally {
     // Clean up connection
     try {
@@ -157,7 +158,7 @@ export async function callToolDirect(endpoint: string, toolName: string, params:
     });
 
     debugLog("✅ Tool call successful");
-    console.log(JSON.stringify(result, null, 2));
+    safeConsoleLog(result);
   } finally {
     // Clean up connection
     try {
@@ -245,7 +246,7 @@ export async function callToolByAlias(toolAlias: string, params: string, debugLo
     });
 
     debugLog("✅ Tool call successful");
-    console.log(JSON.stringify(result, null, 2));
+    safeConsoleLog(result);
   } finally {
     // Clean up connection
     try {

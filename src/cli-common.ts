@@ -62,6 +62,80 @@ export function exitWithError(message: string, usage?: string) {
 }
 
 /**
+ * Limit line length for output to ensure compatibility with coding agents
+ * that have line length limitations (e.g., OpenAI Codex with 1600 byte limit)
+ */
+export function limitLineLength(text: string, maxLength: number = 1550): string {
+  const lines = text.split('\n');
+  const processedLines: string[] = [];
+
+  for (const line of lines) {
+    if (line.length <= maxLength) {
+      processedLines.push(line);
+    } else {
+      // Split long lines at word boundaries when possible
+      let remainingText = line;
+      while (remainingText.length > maxLength) {
+        let cutPoint = maxLength;
+
+        // Try to find a good break point (space, comma, or other punctuation)
+        const searchStart = Math.max(0, maxLength - 100);
+        const breakChars = [' ', ',', ';', ':', '"', '}', ']', ')', '\t'];
+
+        for (let i = maxLength - 1; i >= searchStart; i--) {
+          if (breakChars.includes(remainingText[i])) {
+            cutPoint = i + 1;
+            break;
+          }
+        }
+
+        // If no good break point found, force break at maxLength
+        if (cutPoint === maxLength && remainingText.length > maxLength) {
+          // Look for JSON-safe break points near the end
+          for (let i = maxLength - 10; i < maxLength; i++) {
+            if (remainingText[i] === '"' && remainingText[i + 1] === ',') {
+              cutPoint = i + 2;
+              break;
+            }
+          }
+        }
+
+        processedLines.push(remainingText.substring(0, cutPoint));
+        remainingText = remainingText.substring(cutPoint);
+      }
+
+      // Add any remaining text
+      if (remainingText.length > 0) {
+        processedLines.push(remainingText);
+      }
+    }
+  }
+
+  return processedLines.join('\n');
+}
+
+/**
+ * Safe console.log that limits line length
+ */
+export function safeConsoleLog(data: any): void {
+  let output: string;
+
+  if (typeof data === 'string') {
+    output = data;
+  } else {
+    // Convert objects to JSON string
+    try {
+      output = JSON.stringify(data, null, 2);
+    } catch (error) {
+      output = String(data);
+    }
+  }
+
+  const limitedOutput = limitLineLength(output);
+  console.log(limitedOutput);
+}
+
+/**
  * Compare two semantic versions
  * Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
  */
