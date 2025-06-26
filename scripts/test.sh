@@ -386,7 +386,7 @@ EOF
 
     # Test direct tool call with custom headers
     run_test "Direct tool call with custom headers" \
-        "$TMCP_CMD direct https://api.ref.tools/mcp --headers '{\"x-ref-api-key\": \"$REF_API_KEY\"}' call search_documentation '{\"query\": \"React hooks\"}'" \
+        "$TMCP_CMD direct https://api.ref.tools/mcp --headers '{\"x-ref-api-key\": \"$REF_API_KEY\"}' call ref__search_documentation '{\"query\": \"React hooks\"}'" \
         '"content"|"result"|"data"'
 
     # Test behavior with missing headers (should fail with 401)
