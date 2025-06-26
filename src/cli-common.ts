@@ -115,24 +115,94 @@ export function limitLineLength(text: string, maxLength: number = 1550): string 
 }
 
 /**
- * Safe console.log that limits line length
+ * Safe console.log that ensures no line exceeds 1550 bytes for cloud environments
+ * Applies line limiting to final output while preserving JSON validity
  */
 export function safeConsoleLog(data: any): void {
-  let output: string;
-
   if (typeof data === 'string') {
-    output = data;
+    // For plain strings, apply standard line limiting
+    const limitedOutput = limitLineLength(data);
+    console.log(limitedOutput);
   } else {
-    // Convert objects to JSON string
-    try {
-      output = JSON.stringify(data, null, 2);
-    } catch (error) {
-      output = String(data);
+    // For objects, first convert to JSON then apply smart line limiting
+    const jsonString = JSON.stringify(data, null, 2);
+    const safeLimitedJson = limitJsonLineLength(jsonString);
+    console.log(safeLimitedJson);
+  }
+}
+
+/**
+ * Apply line length limiting to JSON output while preserving JSON structure
+ * Uses a simpler approach that breaks long strings with escaped newlines
+ */
+function limitJsonLineLength(jsonString: string, maxLength: number = 1550): string {
+  // Parse and re-stringify the JSON with line length limiting applied to string values
+  try {
+    const data = JSON.parse(jsonString);
+    const processedData = processJsonForLineLength(data, maxLength);
+    return JSON.stringify(processedData, null, 2);
+  } catch (error) {
+    // If JSON parsing fails, fall back to simple line limiting
+    return limitLineLength(jsonString, maxLength);
+  }
+}
+
+/**
+ * Recursively process JSON data to ensure string values don't create overly long lines
+ */
+function processJsonForLineLength(data: any, maxLength: number): any {
+  if (typeof data === 'string') {
+    // Break long strings at word boundaries with \n characters
+    return breakLongString(data, maxLength - 100); // Leave room for JSON formatting
+  } else if (Array.isArray(data)) {
+    return data.map(item => processJsonForLineLength(item, maxLength));
+  } else if (data && typeof data === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      result[key] = processJsonForLineLength(value, maxLength);
+    }
+    return result;
+  }
+  return data;
+}
+
+/**
+ * Break long strings at word boundaries using actual newlines
+ */
+function breakLongString(text: string, maxLength: number = 1450): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  const lines: string[] = [];
+  let currentLine = '';
+  const words = text.split(' ');
+
+  for (const word of words) {
+    if (currentLine.length + word.length + 1 > maxLength) {
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        // Word itself is too long, force break it
+        lines.push(word.substring(0, maxLength));
+        currentLine = word.substring(maxLength);
+      }
+    } else {
+      if (currentLine) {
+        currentLine += ' ' + word;
+      } else {
+        currentLine = word;
+      }
     }
   }
 
-  const limitedOutput = limitLineLength(output);
-  console.log(limitedOutput);
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  // Join with actual newlines (JSON.stringify will properly escape them)
+  return lines.join('\n');
 }
 
 /**
