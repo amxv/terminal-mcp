@@ -112,7 +112,8 @@ export function findMcpConfig(customConfigPath?: string): McpConfig | null {
     configPaths = [
       "terminal-mcp/servers.json",
       ".cursor/mcp.json",
-      "mcp.json"
+      "mcp.json",
+      ".mcp.json",
     ];
   }
 
