@@ -10,6 +10,8 @@ export interface McpServerConfig {
   // Support for stdio servers
   command?: string;
   args?: string[];
+  // Support for Claude Code format
+  type?: 'stdio' | 'http';
 }
 
 export interface McpConfig {
@@ -96,6 +98,66 @@ function generateExampleValue(propSchema: any, propName: string): any {
     default:
       return "VALUE";
   }
+}
+
+/**
+ * Parse a command string into command and arguments
+ * Handles quoted arguments and complex command lines
+ */
+function parseCommandString(commandString: string): { command: string; args: string[] } {
+  const parts: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  let quoteChar = '';
+
+  for (let i = 0; i < commandString.length; i++) {
+    const char = commandString[i];
+
+    if (!inQuotes && (char === '"' || char === "'")) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (inQuotes && char === quoteChar) {
+      inQuotes = false;
+      quoteChar = '';
+    } else if (!inQuotes && char === ' ') {
+      if (current.trim()) {
+        parts.push(current.trim());
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+
+  if (parts.length === 0) {
+    throw new Error(`Invalid command string: ${commandString}`);
+  }
+
+  return {
+    command: parts[0],
+    args: parts.slice(1)
+  };
+}
+
+/**
+ * Normalize server configuration to handle different formats
+ */
+export function normalizeServerConfig(config: McpServerConfig): McpServerConfig {
+  const normalized = { ...config };
+
+  // If command is provided but args is not, and command contains spaces,
+  // parse the command string to extract command and args
+  if (normalized.command && !normalized.args && normalized.command.includes(' ')) {
+    const parsed = parseCommandString(normalized.command);
+    normalized.command = parsed.command;
+    normalized.args = parsed.args;
+  }
+
+  return normalized;
 }
 
 /**
@@ -229,18 +291,28 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
     debugLog("Created directory:", terminalMcpDir);
   }
 
-  // Copy config to terminal-mcp/servers.json
+  // Normalize and copy config to terminal-mcp/servers.json
+  const normalizedConfig = {
+    mcpServers: Object.fromEntries(
+      Object.entries(config.mcpServers).map(([alias, serverConfig]) => [
+        alias,
+        normalizeServerConfig(serverConfig)
+      ])
+    )
+  };
+
   const configPath = join(terminalMcpDir, "servers.json");
-  writeFileSync(configPath, JSON.stringify(config, null, 2));
+  writeFileSync(configPath, JSON.stringify(normalizedConfig, null, 2));
   console.log("✅ Copied configuration to", configPath);
 
-  // Import createClient here to avoid circular dependencies
-  const { createClient } = await import("./client");
+  // Import createEphemeralClient here to avoid circular dependencies
+  const { createEphemeralClient } = await import("./client");
 
   // Aggregate tools from all servers
   const toolsConfig: ToolsConfig = { mcpTools: {} };
+  let hasStdioServers = false;
 
-  for (const [serverAlias, serverConfig] of Object.entries(config.mcpServers)) {
+  for (const [serverAlias, serverConfig] of Object.entries(normalizedConfig.mcpServers)) {
     // Validate server configuration before attempting connection
     try {
       validateServerConfig(serverConfig);
@@ -254,8 +326,15 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
       : getServerUrl(serverConfig);
     console.log(`🔍 Discovering tools from ${serverAlias} (${serverDescription})...`);
 
+    // Track if we have any stdio servers
+    if (isStdioServer(serverConfig)) {
+      hasStdioServers = true;
+    }
+
+    let clientInfo: { client: any; cleanup: () => Promise<void> } | null = null;
     try {
-      const client = await createClient(serverConfig, debugLog);
+      clientInfo = await createEphemeralClient(serverConfig, debugLog);
+      const { client, cleanup } = clientInfo;
 
       try {
         const toolsResponse = await client.listTools();
@@ -280,16 +359,21 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
           console.log(`  ✅ Added tool: ${toolAlias}`);
         }
       } finally {
-        // Clean up connection
-        try {
-          // @ts-ignore - accessing private transport property
-          await client._transport?.close?.();
-        } catch (e) {
-          debugLog("Warning: Error during cleanup:", e);
-        }
+        // Clean up connection - this should properly terminate stdio servers
+        debugLog("Cleaning up connection for server:", serverAlias);
+        await cleanup();
+        debugLog("Cleanup completed for server:", serverAlias);
       }
     } catch (error) {
       console.error(`❌ Failed to connect to server ${serverAlias}:`, error);
+      // Ensure cleanup happens even if there's an error
+      if (clientInfo) {
+        try {
+          await clientInfo.cleanup();
+        } catch (cleanupError) {
+          debugLog("Error during error cleanup:", cleanupError);
+        }
+      }
     }
   }
 
@@ -309,5 +393,12 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
     Object.keys(toolsConfig.mcpTools).slice(0, 3).forEach(alias => {
       console.log(`  tmcp call ${alias} <json-args>`);
     });
+  }
+
+  // Force exit for stdio servers that don't terminate properly
+  // This is necessary because some stdio servers (like mcp-remote) are designed to run continuously
+  if (hasStdioServers) {
+    debugLog("Stdio servers detected, forcing process exit");
+    process.exit(0);
   }
 }

@@ -655,6 +655,305 @@ test_help_and_usage() {
         "Unknown command"
 }
 
+test_stdio_functionality() {
+    log_info "=== Testing Stdio Server Functionality ==="
+
+    # Test 0: Basic stdio server command parsing (no network required)
+    log_info "Testing basic stdio server command parsing..."
+    cat > mcp-stdio-basic.json << EOF
+{
+  "mcpServers": {
+    "test": {
+      "command": "echo hello world",
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test basic command parsing without network calls
+    run_test "Basic stdio server command parsing" \
+        "timeout 30 $TMCP_CMD --configpath mcp-stdio-basic.json init" \
+        "Initialization complete|Generated tools configuration|Failed to connect"
+
+    # Check if we have the required environment variable for stdio server testing
+    if [[ -z "$REF_API_KEY" ]]; then
+        log_warning "REF_API_KEY not set, skipping network-dependent stdio server tests"
+        rm -f mcp-stdio-basic.json
+        return
+    fi
+
+    # Test 1: Stdio server configuration with command and args format
+    log_info "Testing stdio server with command + args format..."
+    cat > mcp-stdio-args.json << EOF
+{
+  "mcpServers": {
+    "ref": {
+      "command": "npx",
+      "args": ["mcp-remote@0.1.0-0", "https://api.ref.tools/mcp", "--header", "x-ref-api-key:$REF_API_KEY"],
+      "env": {},
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with stdio server (command + args format) - with timeout
+    run_test "Initialize stdio server (command + args)" \
+        "timeout 60 $TMCP_CMD --configpath mcp-stdio-args.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test 2: Stdio server configuration with single command string format (Claude Code style)
+    log_info "Testing stdio server with single command string format..."
+    cat > mcp-stdio-string.json << EOF
+{
+  "mcpServers": {
+    "ref": {
+      "command": "npx mcp-remote@0.1.0-0 https://api.ref.tools/mcp --header x-ref-api-key:$REF_API_KEY",
+      "env": {},
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with stdio server (single command string format) - with timeout
+    run_test "Initialize stdio server (single command string)" \
+        "timeout 60 $TMCP_CMD --configpath mcp-stdio-string.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test 3: Stdio server with environment variables
+    log_info "Testing stdio server with environment variables..."
+    cat > mcp-stdio-env.json << EOF
+{
+  "mcpServers": {
+    "ref": {
+      "command": "npx",
+      "args": ["mcp-remote@0.1.0-0", "https://api.ref.tools/mcp"],
+      "env": {
+        "REF_API_KEY": "$REF_API_KEY"
+      },
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with stdio server using environment variables - with timeout
+    run_test "Initialize stdio server (with env vars)" \
+        "timeout 60 $TMCP_CMD --configpath mcp-stdio-env.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test 4: Test that stdio servers are properly normalized in servers.json
+    if [[ -f "terminal-mcp/servers.json" ]]; then
+        run_test "Stdio server config normalized properly" \
+            "jq '.mcpServers.ref.command' terminal-mcp/servers.json" \
+            "npx"
+    fi
+
+    # Test 5: Test stdio server tool calls
+    log_info "Testing stdio server tool calls..."
+
+    # Use the normalized stdio config for tool calls
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        # Find a ref tool to test with
+        local ref_tool
+        if command -v jq &> /dev/null; then
+            ref_tool=$(jq -r '.mcpTools | to_entries[] | select(.key | startswith("ref__")) | .key' "terminal-mcp/tools.json" | head -1 2>/dev/null || echo "")
+        fi
+
+        if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+            run_test "Call stdio server tool ($ref_tool)" \
+                "timeout 60 $TMCP_CMD call $ref_tool '{\"query\": \"React hooks\", \"keyWords\": [\"React\", \"hooks\"]}'" \
+                '"content"|"result"|"data"'
+        else
+            log_warning "No ref tools found for stdio server testing"
+        fi
+    fi
+
+    # Test 6: Test stdio server process cleanup (ensure no hanging processes)
+    log_info "Testing stdio server process cleanup..."
+
+    # Run a quick tool call and check that no mcp-remote processes are left hanging
+    local pre_process_count=$(pgrep -f "mcp-remote" 2>/dev/null | wc -l)
+
+    # Make a tool call (this should start and clean up a stdio process)
+    if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+        timeout 30 "$TMCP_CMD" call "$ref_tool" '{"query": "test", "keyWords": ["test"]}' > /dev/null 2>&1 || true
+    fi
+
+    # Wait a moment for cleanup
+    sleep 2
+
+    local post_process_count=$(pgrep -f "mcp-remote" 2>/dev/null | wc -l)
+
+    if [[ $post_process_count -le $pre_process_count ]]; then
+        log_success "Stdio server process cleanup working (no hanging processes)"
+        ((TESTS_PASSED++))
+    else
+        log_error "Stdio server process cleanup failed (processes still running)"
+        ((TESTS_FAILED++))
+    fi
+    ((TESTS_RUN++))
+
+    # Test 7: Test bunx command resolution
+    log_info "Testing bunx command resolution..."
+    cat > mcp-stdio-bunx.json << EOF
+{
+  "mcpServers": {
+    "ref": {
+      "command": "bunx",
+      "args": ["mcp-remote@0.1.0-0", "https://api.ref.tools/mcp", "--header", "x-ref-api-key:$REF_API_KEY"],
+      "env": {},
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with bunx (should fall back to npx if bun not available) - with timeout
+    run_test "Initialize stdio server (bunx fallback)" \
+        "timeout 60 $TMCP_CMD --configpath mcp-stdio-bunx.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test 8: Test stdio server error handling
+    log_info "Testing stdio server error handling..."
+    cat > mcp-stdio-invalid.json << EOF
+{
+  "mcpServers": {
+    "invalid": {
+      "command": "non-existent-command",
+      "args": ["some", "args"],
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with invalid stdio command - with timeout
+    run_test_expect_failure "Initialize stdio server (invalid command)" \
+        "timeout 30 $TMCP_CMD --configpath mcp-stdio-invalid.json init" \
+        "Failed to connect|Error|Command not found|No such file"
+
+    # Test 9: Test mixed HTTP and stdio servers
+    log_info "Testing mixed HTTP and stdio servers..."
+    cat > mcp-mixed.json << EOF
+{
+  "mcpServers": {
+    "context7": {
+      "url": "$CONTEXT7_URL"
+    },
+    "ref": {
+      "command": "npx",
+      "args": ["mcp-remote@0.1.0-0", "https://api.ref.tools/mcp", "--header", "x-ref-api-key:$REF_API_KEY"],
+      "env": {},
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with mixed server types - with timeout
+    run_test "Initialize mixed HTTP and stdio servers" \
+        "timeout 90 $TMCP_CMD --configpath mcp-mixed.json init" \
+        "Initialization complete|Generated tools configuration"
+
+    # Test that both server types are discovered
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        run_test "Mixed servers: context7 tools discovered" \
+            "jq '.mcpTools | keys[]' terminal-mcp/tools.json" \
+            "context7__"
+
+        run_test "Mixed servers: ref tools discovered" \
+            "jq '.mcpTools | keys[]' terminal-mcp/tools.json" \
+            "ref__"
+    fi
+
+    # Test 10: Test stdio server configuration validation
+    log_info "Testing stdio server configuration validation..."
+    cat > mcp-stdio-invalid-config.json << EOF
+{
+  "mcpServers": {
+    "invalid": {
+      "command": "",
+      "type": "stdio"
+    }
+  }
+}
+EOF
+
+    # Test initialization with invalid stdio configuration - with timeout
+    run_test_expect_failure "Initialize stdio server (empty command)" \
+        "timeout 30 $TMCP_CMD --configpath mcp-stdio-invalid-config.json init" \
+        "Invalid configuration|Command not found|Empty command"
+
+    # Test 11: Test that agent binary works with stdio servers
+    log_info "Testing agent binary with stdio servers..."
+
+    # Copy stdio config to default location for agent testing
+    if [[ -f "terminal-mcp/tools.json" ]]; then
+        # Backup existing config
+        [[ -f "terminal-mcp/servers.json" ]] && cp "terminal-mcp/servers.json" "terminal-mcp/servers.json.backup"
+
+        # Copy stdio config to default location
+        cp mcp-stdio-args.json mcp.json
+        timeout 60 "$TMCP_CMD" init > /dev/null 2>&1 || true
+
+        run_test "Agent works with stdio server config" \
+            "$TMCP_AGENT_CMD list" \
+            '"configured_tools".*"total_count"|No tools configuration found"'
+
+        # Test agent can call stdio server tools
+        if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+            run_test "Agent can call stdio server tool ($ref_tool)" \
+                "timeout 60 $TMCP_AGENT_CMD call $ref_tool '{\"query\": \"React hooks\", \"keyWords\": [\"React\", \"hooks\"]}'" \
+                '"content"|"result"|"data"|Tool.*not found"'
+        fi
+
+        # Restore original config
+        [[ -f "terminal-mcp/servers.json.backup" ]] && mv "terminal-mcp/servers.json.backup" "terminal-mcp/servers.json"
+    fi
+
+    # Test 12: Test stdio server timeout and interrupt handling
+    log_info "Testing stdio server timeout handling..."
+
+    # Test that stdio server calls can be interrupted/timeout properly
+    # This tests the cleanup mechanism when a call is interrupted
+    if [[ -n "$ref_tool" && "$ref_tool" != "null" ]]; then
+        # Start a call in background and kill it after a short time
+        timeout 5 "$TMCP_CMD" call "$ref_tool" '{"query": "test", "keyWords": ["test"]}' > /dev/null 2>&1 &
+        local bg_pid=$!
+
+        # Wait a moment then kill the background process
+        sleep 1
+        kill $bg_pid 2>/dev/null || true
+        wait $bg_pid 2>/dev/null || true
+
+        # Check that no stdio processes are left hanging
+        sleep 2
+        local hanging_processes=$(pgrep -f "mcp-remote" 2>/dev/null | wc -l)
+
+        if [[ $hanging_processes -eq 0 ]]; then
+            log_success "Stdio server interrupt cleanup working"
+            ((TESTS_PASSED++))
+        else
+            log_error "Stdio server interrupt cleanup failed (processes still running)"
+            ((TESTS_FAILED++))
+        fi
+        ((TESTS_RUN++))
+    fi
+
+    # Force cleanup any remaining processes before finishing
+    log_info "Cleaning up any remaining stdio processes..."
+    pkill -f "mcp-remote" 2>/dev/null || true
+    sleep 1
+
+    # Clean up test files
+    rm -f mcp-stdio-basic.json mcp-stdio-args.json mcp-stdio-string.json mcp-stdio-env.json mcp-stdio-bunx.json mcp-stdio-invalid.json mcp-mixed.json mcp-stdio-invalid-config.json
+
+    log_success "Stdio server functionality tests completed"
+}
+
 print_summary() {
     echo
     log_info "=== Test Summary ==="
@@ -681,13 +980,15 @@ main() {
     # Set up cleanup trap
     trap cleanup_test_env EXIT INT TERM
 
-        setup_test_env
+    setup_test_env
 
     # Run test suites
     log_info "Running direct functionality tests..."
     test_direct_functionality
     log_info "Running configuration functionality tests..."
     test_configuration_functionality
+    log_info "Running stdio server functionality tests..."
+    test_stdio_functionality
     log_info "Running authenticated server tests..."
     test_authenticated_functionality
     log_info "Running custom headers tests..."

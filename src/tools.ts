@@ -1,5 +1,5 @@
 import { loadToolsConfig, loadMcpConfig, findMcpConfig, ToolsConfig } from "./config";
-import { createClient, createClientFromUrl } from "./client";
+import { createClient, createClientFromUrl, createEphemeralClient } from "./client";
 import { safeConsoleLog } from "./cli-common";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
@@ -483,8 +483,8 @@ export async function callToolByAlias(toolAlias: string, params: string, debugLo
     process.exit(1);
   }
 
-  // Create client and call tool
-  const client = await createClient(serverConfig, debugLog);
+  // Create ephemeral client and call tool
+  const { client, cleanup } = await createEphemeralClient(serverConfig, debugLog);
 
   try {
     debugLog("Making tool call...");
@@ -492,12 +492,16 @@ export async function callToolByAlias(toolAlias: string, params: string, debugLo
     debugLog("✅ Tool call successful");
     safeConsoleLog(result);
   } finally {
-    // Clean up connection
-    try {
-      // @ts-ignore - accessing private transport property
-      await client._transport?.close?.();
-    } catch (e) {
-      debugLog("Warning: Error during cleanup:", e);
+    // Clean up connection - this should properly terminate stdio servers
+    debugLog("Cleaning up connection for tool call");
+    await cleanup();
+    debugLog("Cleanup completed for tool call");
+
+    // Force exit for stdio servers that don't terminate properly
+    // This is necessary because some stdio servers (like mcp-remote) are designed to run continuously
+    if (serverConfig.command) {
+      debugLog("Stdio server detected, forcing process exit");
+      process.exit(0);
     }
   }
 }

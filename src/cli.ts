@@ -55,6 +55,8 @@ Examples:
 
   tmcp --debug call tool-alias <json-args>
 
+  ## Note: While stdio servers are supported, they are not recommended. Prefer HTTP servers because they are more reliable, faster, and easier to debug.
+
 For more information, visit: https://github.com/zueai/terminal-mcp`);
 }
 

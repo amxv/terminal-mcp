@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { execSync } from "child_process";
+import { execSync, exec } from "child_process";
 import type { McpServerConfig } from "./config";
 import { isStdioServer, validateServerConfig, getServerUrl } from "./config";
 
@@ -211,6 +211,12 @@ function resolveStdioCommand(command: string, args: string[] = []): { command: s
         throw new Error("Neither 'bun' nor 'npx' found in PATH. Please install Bun or Node.js.");
       }
     }
+  } else if (command === "npx") {
+    // npx needs to be run through a shell to work properly
+    // Use sh -c to run the full command
+    const fullCommand = `${command} ${args.join(' ')}`;
+    resolvedCommand = "/bin/sh";
+    resolvedArgs = ["-c", fullCommand];
   } else {
     // Try to resolve other commands to full paths
     const fullPath = findCommand(command);
@@ -224,9 +230,10 @@ function resolveStdioCommand(command: string, args: string[] = []): { command: s
 }
 
 /**
- * Create and connect to an MCP client with headers and environment variables
+ * Create and connect to an MCP client that will be used briefly and then terminated
+ * This is specifically for stdio servers in init and call operations
  */
-export async function createClient(config: McpServerConfig, debugLog: (message: string, ...args: any[]) => void): Promise<Client> {
+export async function createEphemeralClient(config: McpServerConfig, debugLog: (message: string, ...args: any[]) => void): Promise<{ client: Client; cleanup: () => Promise<void> }> {
   // Validate configuration
   validateServerConfig(config);
 
@@ -240,11 +247,12 @@ export async function createClient(config: McpServerConfig, debugLog: (message: 
 
   // Create appropriate transport based on server type
   let transport;
+  let cleanup: () => Promise<void>;
   const serverUrl = isStdioServer(config) ? `stdio:${config.command}` : getServerUrl(config);
 
   if (isStdioServer(config)) {
     // stdio server
-    debugLog("Creating stdio MCP client for command:", config.command);
+    debugLog("Creating ephemeral stdio MCP client for command:", config.command);
 
     if (!config.command) {
       throw new Error("Command not found in stdio server configuration");
@@ -253,14 +261,78 @@ export async function createClient(config: McpServerConfig, debugLog: (message: 
     const { command, args } = resolveStdioCommand(config.command, config.args);
     debugLog("Resolved command:", command, "args:", args);
 
+    // Merge config env with current process env to ensure PATH is available
+    const mergedEnv = Object.fromEntries(
+      Object.entries({ ...process.env, ...config.env }).filter(([_, value]) => value !== undefined)
+    ) as Record<string, string>;
+
     transport = new StdioClientTransport({
       command: command,
       args: args,
-      env: config.env
+      env: mergedEnv
     });
+
+    // For stdio servers, we need to forcefully terminate the process
+    cleanup = async () => {
+      try {
+        // @ts-ignore - accessing private properties to get the child process
+        const childProcess = transport._process;
+        if (childProcess && childProcess.pid && !childProcess.killed) {
+          debugLog("Terminating stdio server process:", childProcess.pid);
+
+          // Kill the process tree using pkill with parent PID
+          // This will kill all child processes spawned by our shell command
+          try {
+            exec(`pkill -P ${childProcess.pid}`, () => {});
+            debugLog("Killed child processes of PID:", childProcess.pid);
+          } catch (e) {
+            debugLog("pkill failed:", e);
+          }
+
+          // Also try to kill any processes matching the command pattern
+          // Extract the first argument to use as a pattern
+          const commandPattern = args.length > 0 ? args[args.length - 1].split(' ')[0] : '';
+          if (commandPattern) {
+            try {
+              exec(`pkill -f "${commandPattern}"`, () => {});
+              debugLog("Killed processes matching pattern:", commandPattern);
+            } catch (e) {
+              debugLog("pkill pattern match failed:", e);
+            }
+          }
+
+          // Also try to kill the main process
+          try {
+            childProcess.kill('SIGTERM');
+            debugLog("Sent SIGTERM to main process:", childProcess.pid);
+          } catch (e) {
+            debugLog("SIGTERM failed:", e);
+          }
+
+          // Wait a bit for graceful termination
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // If still running, force kill
+          if (!childProcess.killed) {
+            debugLog("Force killing stdio server process:", childProcess.pid);
+            try {
+              childProcess.kill('SIGKILL');
+              debugLog("Sent SIGKILL to main process:", childProcess.pid);
+            } catch (e) {
+              debugLog("SIGKILL failed:", e);
+            }
+          }
+        }
+
+        // Call the standard close method after killing the process
+        await transport.close?.();
+      } catch (e) {
+        debugLog("Warning: Error during stdio cleanup:", e);
+      }
+    };
   } else {
     // HTTP server
-    debugLog("Creating HTTP MCP client for endpoint:", serverUrl);
+    debugLog("Creating ephemeral HTTP MCP client for endpoint:", serverUrl);
 
     if (!serverUrl) {
       throw new Error("Server URL not found in HTTP server configuration");
@@ -275,8 +347,16 @@ export async function createClient(config: McpServerConfig, debugLog: (message: 
       debugLog("Adding custom headers:", config.headers);
     }
 
-    // Pass headers as the second parameter to StreamableHTTPClientTransport
     transport = new StreamableHTTPClientTransport(new URL(serverUrl), transportOptions);
+
+    // For HTTP servers, standard cleanup is sufficient
+    cleanup = async () => {
+      try {
+        await transport.close?.();
+      } catch (e) {
+        debugLog("Warning: Error during HTTP cleanup:", e);
+      }
+    };
   }
 
   try {
@@ -294,14 +374,27 @@ export async function createClient(config: McpServerConfig, debugLog: (message: 
 
     // Connect to server
     await client.connect(transport);
-    debugLog("✅ Successfully connected to MCP server");
+    debugLog("✅ Successfully connected to ephemeral MCP server");
 
-    return client;
+    return { client, cleanup };
   } catch (error) {
+    // If connection fails, still try to cleanup
+    await cleanup();
     const details = extractErrorDetails(error, serverUrl);
     displayDetailedError(details, debugLog);
     throw error;
   }
+}
+
+/**
+ * Create and connect to an MCP client with headers and environment variables
+ * This is the original function for long-lived connections
+ */
+export async function createClient(config: McpServerConfig, debugLog: (message: string, ...args: any[]) => void): Promise<Client> {
+  // For now, just use the ephemeral client and return only the client
+  // This maintains backward compatibility while we transition
+  const { client } = await createEphemeralClient(config, debugLog);
+  return client;
 }
 
 /**
