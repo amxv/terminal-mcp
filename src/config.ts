@@ -217,7 +217,7 @@ export async function initConfig(debugLog: (message: string, ...args: any[]) => 
       console.error(`❌ Configuration file not found: ${customConfigPath}`);
     } else {
       console.error("❌ No mcp.json configuration file found");
-      console.error("Expected locations: terminal-mcp/servers.json, .cursor/mcp.json, or mcp.json");
+      console.error("Expected locations: terminal-mcp/servers.json, .cursor/mcp.json, mcp.json, or .mcp.json");
     }
     process.exit(1);
   }

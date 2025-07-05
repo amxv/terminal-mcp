@@ -630,7 +630,7 @@ test_error_conditions() {
 
     run_test_expect_failure "Init without mcp.json" \
         "$TMCP_CMD init" \
-        "No mcp.json configuration file found"
+        "MCP JSON configuration file not found"
 
     cd "$TEST_DIR"
     rm -rf "$clean_dir"
