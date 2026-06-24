@@ -273,5 +273,4 @@ For detailed examples and advanced usage, see: [Direct Communication Guide](docs
 
 ## License
 
-MIT
-
+Apache 2.0
